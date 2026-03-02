@@ -1,0 +1,126 @@
+const mongoose = require("mongoose");
+
+// 1. USER
+const userSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true },
+  afk: {
+    isAfk:     { type: Boolean, default: false },
+    reason:    { type: String,  default: null },
+    timestamp: { type: Number,  default: null }
+  }
+});
+
+// 2. FAMILY
+const familySchema = new mongoose.Schema({
+  userId:    { type: String, required: true, unique: true },
+  partnerId: { type: String, default: null },
+  parent:    { type: String, default: null },
+  children:  { type: Array,  default: [] }
+});
+
+// 3. CONFIG
+const configSchema = new mongoose.Schema({
+  guildId: { type: String, required: true, unique: true },
+  poj: {
+    channel: { type: String, default: null },
+    time:    { type: Number, default: 5000 }
+  },
+  booster: {
+    channelId: { type: String, default: null },
+    roleId:    { type: String, default: null }  // ✅ ADDED: was missing — boosterrole award never saved the role
+  },
+  welcome: {
+    channel:   { type: String, default: null },
+    embedCode: { type: String, default: null }
+  }
+});
+
+// 4. GIVEAWAY
+const giveawaySchema = new mongoose.Schema({
+  messageId:    { type: String,  required: true, unique: true },
+  channelId:    { type: String,  required: true },
+  guildId:      { type: String,  required: true },
+  prize:        { type: String,  required: true },
+  endTime:      { type: Number,  required: true },
+  winnersCount: { type: Number,  required: true },
+  participants: { type: Array,   default: [] },
+  ended:        { type: Boolean, default: false },
+  hostedBy:     { type: String,  required: true }
+});
+
+// 5. LAST FM
+const lastFmSchema = new mongoose.Schema({
+  userId:   { type: String, required: true, unique: true },
+  username: { type: String, required: true }
+});
+
+// 6. SOBS
+const sobsSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true },
+  count:  { type: Number, default: 0 }
+});
+
+// 7. BOOSTER ROLE
+const boosterRoleSchema = new mongoose.Schema({
+  userId:  { type: String, required: true, unique: true },
+  guildId: { type: String, required: true },
+  roleId:  { type: String, default: null }
+});
+
+// 8. ECONOMY USER
+const ecoUserSchema = new mongoose.Schema({
+  userId:      { type: String,  required: true, unique: true },
+  wallet:      { type: Number,  default: 0 },
+  bank:        { type: Number,  default: 0 },
+  aura:        { type: Number,  default: 0 },
+  lastWork:    { type: Number,  default: 0 },
+  lastDaily:   { type: Number,  default: 0 },
+  welcomeSent: { type: Boolean, default: false }
+});
+
+// 9. GUILD STATS — message counts and voice time per user per guild
+const guildStatsSchema = new mongoose.Schema({
+  guildId:       { type: String, required: true },
+  userId:        { type: String, required: true },
+  username:      { type: String, default: "Unknown" },
+  messageCount:  { type: Number, default: 0 },
+  voiceSeconds:  { type: Number, default: 0 },
+  voiceJoinedAt: { type: Number, default: null }
+});
+guildStatsSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+
+// 10. LEVEL USER
+const levelUserSchema = new mongoose.Schema({
+  guildId:  { type: String, required: true },
+  userId:   { type: String, required: true },
+  username: { type: String, default: "Unknown" },
+  xp:       { type: Number, default: 0 },
+  level:    { type: Number, default: 0 },
+  lastXpAt: { type: Number, default: 0 }
+});
+levelUserSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+levelUserSchema.index({ guildId: 1, xp: -1 });
+
+// 11. LEVEL CONFIG
+const levelConfigSchema = new mongoose.Schema({
+  guildId:    { type: String, required: true, unique: true },
+  enabled:    { type: Boolean, default: true },
+  channel:    { type: String,  default: null },
+  embedCode:  { type: String,  default: null },
+  rewards:    { type: Array,   default: [] },
+  multiplier: { type: Number,  default: 1.0 }
+});
+
+module.exports = {
+  User:        mongoose.model("User",        userSchema),
+  Family:      mongoose.model("Family",      familySchema),
+  Config:      mongoose.model("Config",      configSchema),
+  Giveaway:    mongoose.model("Giveaway",    giveawaySchema),
+  LastFm:      mongoose.model("LastFm",      lastFmSchema),
+  Sobs:        mongoose.model("Sobs",        sobsSchema),
+  BoosterRole: mongoose.model("BoosterRole", boosterRoleSchema),
+  EcoUser:     mongoose.model("EcoUser",     ecoUserSchema),
+  GuildStats:  mongoose.model("GuildStats",  guildStatsSchema),
+  LevelUser:   mongoose.model("LevelUser",   levelUserSchema),
+  LevelConfig: mongoose.model("LevelConfig", levelConfigSchema)
+};
