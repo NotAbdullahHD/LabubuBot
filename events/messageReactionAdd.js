@@ -23,61 +23,68 @@ module.exports = {
     await handleReactionIncome(reaction, user);
 
     // ── Sobs counter ──────────────────────────────────────
+    // ✅ FIXED: removed early return — was killing starboard code for 😭 emoji
     if (reaction.emoji.name === "😭") {
       const messageAuthor = message.author;
-      if (!messageAuthor || messageAuthor.bot || messageAuthor.id === user.id) return;
-
-      await Sobs.findOneAndUpdate(
-        { userId: messageAuthor.id },
-        { $inc: { count: 1 } },
-        { upsert: true }
-      );
+      if (messageAuthor && !messageAuthor.bot && messageAuthor.id !== user.id) {
+        await Sobs.findOneAndUpdate(
+          { userId: messageAuthor.id },
+          { $inc: { count: 1 } },
+          { upsert: true }
+        ).catch(() => {});
+      }
     }
 
     // ── Starboard ─────────────────────────────────────────
     try {
       const config = await StarboardConfig.findOne({ guildId: guild.id });
-
-      // Not configured, disabled, or no channel set
       if (!config || !config.enabled || !config.channelId) return;
 
-      // Check if this reaction matches the configured emoji
-      const emojiMatch = reaction.emoji.id
-        ? `<${reaction.emoji.animated ? "a" : ""}:${reaction.emoji.name}:${reaction.emoji.id}>` === config.emoji
-        : reaction.emoji.name === config.emoji;
+      // ✅ FIXED: strip variation selectors from both sides before comparing
+      // Unicode variation selectors (like \uFE0F) can silently break emoji matching
+      const normalize = (str) => str?.replace(/\uFE0F/g, "").trim() ?? "";
+
+      let emojiMatch = false;
+      if (reaction.emoji.id) {
+        // Custom server emoji — match as <:name:id> or <a:name:id>
+        const full = `<${reaction.emoji.animated ? "a" : ""}:${reaction.emoji.name}:${reaction.emoji.id}>`;
+        emojiMatch = full === config.emoji;
+      } else {
+        // Unicode emoji — normalize both before comparing
+        emojiMatch = normalize(reaction.emoji.name) === normalize(config.emoji);
+      }
 
       if (!emojiMatch) return;
 
-      // Don't starboard the bot's own messages or messages in the starboard channel
+      // Don't starboard bot messages or messages inside the starboard channel itself
       if (message.author?.bot) return;
       if (message.channel.id === config.channelId) return;
 
-      // Check reaction count
+      // Check reaction count meets threshold
       const count = reaction.count;
       if (count < config.threshold) return;
 
-      // Already posted?
+      // Already posted? Just update the count line
       const existing = await StarboardEntry.findOne({ originalMsgId: message.id });
-      if (existing) {
-        // Update the count on the existing starboard post
-        if (existing.starboardMsgId) {
-          const sbChannel = guild.channels.cache.get(config.channelId);
-          if (sbChannel) {
-            const sbMsg = await sbChannel.messages.fetch(existing.starboardMsgId).catch(() => null);
-            if (sbMsg) {
-              const newContent = `${config.emoji} **${count}** · <#${message.channel.id}>`;
-              await sbMsg.edit({ content: newContent }).catch(() => {});
-            }
+      if (existing?.starboardMsgId) {
+        const sbChannel = guild.channels.cache.get(config.channelId);
+        if (sbChannel) {
+          const sbMsg = await sbChannel.messages.fetch(existing.starboardMsgId).catch(() => null);
+          if (sbMsg) {
+            await sbMsg.edit({
+              content: `${config.emoji} **${count}** · <#${message.channel.id}>`
+            }).catch(() => {});
           }
         }
         return;
       }
+      if (existing) return; // posted but message was deleted — skip
 
-      // Get the starboard channel
+      // Get starboard channel
       const sbChannel = guild.channels.cache.get(config.channelId);
       if (!sbChannel) return;
 
-      // Build the starboard embed
+      // Build embed
       const embed = new EmbedBuilder()
         .setColor(0xFFAC33)
         .setAuthor({
@@ -86,18 +93,18 @@ module.exports = {
         })
         .setTimestamp(message.createdAt);
 
-      // Add message content if any
       if (message.content) {
         embed.setDescription(message.content.slice(0, 4096));
       }
 
-      // Add image if attached
+      // Include image attachment if any
       const image = message.attachments.find(a => a.contentType?.startsWith("image/"));
       if (image) embed.setImage(image.url);
 
-      // Add jump link field
-      embed.addFields({ name: "Source", value: `[Jump to message](${message.url})`, inline: true });
-      embed.addFields({ name: "Channel", value: `<#${message.channel.id}>`, inline: true });
+      embed.addFields(
+        { name: "Source",  value: `[Jump to message](${message.url})`, inline: true },
+        { name: "Channel", value: `<#${message.channel.id}>`,          inline: true }
+      );
 
       // Send to starboard
       const sbMsg = await sbChannel.send({
@@ -105,7 +112,7 @@ module.exports = {
         embeds:  [embed]
       });
 
-      // Save entry so we don't double-post
+      // Save so we don't double-post
       await StarboardEntry.create({
         guildId:        guild.id,
         originalMsgId:  message.id,
