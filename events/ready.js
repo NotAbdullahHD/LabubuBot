@@ -1,18 +1,18 @@
-const { ActivityType, SlashCommandBuilder } = require("discord.js");
-const giveawayCommand  = require("../commands/admin/giveaway.js");
-const { startVoiceIncome }  = require("../commands/economy/economy.js");
-const { startMembedLoop }   = require("../commands/utility/membed.js");
-const { startVcembedLoop }  = require("../commands/utility/vcembed.js");
+const { ActivityType, SlashCommandBuilder, ChannelType } = require("discord.js");
+const giveawayCommand      = require("../commands/admin/giveaway.js");
+const { startVoiceIncome } = require("../commands/economy/economy.js");
+const { startMembedLoop }  = require("../commands/utility/membed.js");
+const { startVcembedLoop } = require("../commands/utility/vcembed.js");
 
 module.exports = {
-  name: "ready",
+  name: "clientReady",   // ✅ FIXED: renamed from "ready" to silence deprecation warning
   once: true,
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
     const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
     client.user.setPresence({
-      activities: [{ name: `Ramadan Mubarak ${totalMembers} people`, type: ActivityType.Streaming, url: "https://www.twitch.tv/discord" }],
+      activities: [{ name: `${totalMembers} members`, type: ActivityType.Watching }],
       status: "online"
     });
 
@@ -58,7 +58,6 @@ module.exports = {
       .setName("vcembed").setDescription("Post live top-10 voice time leaderboard")
       .addSubcommand(s => s.setName("send").setDescription("Send to this channel"));
 
-    // ── /levels ───────────────────────────────────────────
     const levelsCommand = new SlashCommandBuilder()
       .setName("levels").setDescription("Configure the leveling system")
       .addSubcommand(s => s.setName("enable").setDescription("Enable XP leveling"))
@@ -66,7 +65,7 @@ module.exports = {
       .addSubcommand(s => s.setName("channel").setDescription("Set level-up announcement channel")
         .addChannelOption(o => o.setName("channel").setDescription("Channel (leave empty = same channel as message)").setRequired(false)))
       .addSubcommand(s => s.setName("multiplier").setDescription("Set XP multiplier (default 1×)")
-        .addNumberOption(o => o.setName("value").setDescription("Multiplier 0.1–10 (e.g. 2 = double XP)").setRequired(true)))
+        .addNumberOption(o => o.setName("value").setDescription("Multiplier 0.1–10").setRequired(true)))
       .addSubcommand(s => s.setName("message").setDescription("Set custom level-up embed (opens form)"))
       .addSubcommand(s => s.setName("add").setDescription("Add a role reward for reaching a level")
         .addIntegerOption(o => o.setName("level").setDescription("Level required").setRequired(true))
@@ -78,6 +77,33 @@ module.exports = {
         .addUserOption(o => o.setName("user").setDescription("User to reset").setRequired(true)))
       .addSubcommand(s => s.setName("info").setDescription("View current leveling settings"));
 
+    // ── /starboard ────────────────────────────────────────
+    const starboardCommand = new SlashCommandBuilder()
+      .setName("starboard").setDescription("Configure the starboard system")
+      .addSubcommand(s => s.setName("set").setDescription("Set up starboard channel, emoji and threshold")
+        .addChannelOption(o => o.setName("channel").setDescription("Starboard channel").setRequired(true))
+        .addStringOption(o => o.setName("emoji").setDescription("Reaction emoji to watch (default ⭐)").setRequired(false))
+        .addIntegerOption(o => o.setName("threshold").setDescription("Reactions needed (default 3)").setRequired(false)))
+      .addSubcommand(s => s.setName("enable").setDescription("Enable starboard"))
+      .addSubcommand(s => s.setName("disable").setDescription("Disable starboard"))
+      .addSubcommand(s => s.setName("info").setDescription("View current starboard settings"));
+
+    // ── /ticket ───────────────────────────────────────────
+    const ticketCommand = new SlashCommandBuilder()
+      .setName("ticket").setDescription("Configure and manage the ticket system")
+      .addSubcommand(s => s.setName("setup").setDescription("Set up ticket system")
+        .addChannelOption(o => o.setName("category").setDescription("Category for ticket channels").setRequired(false))
+        .addRoleOption(o => o.setName("role").setDescription("Support role that can see tickets").setRequired(false))
+        .addChannelOption(o => o.setName("logs").setDescription("Channel to send closed ticket logs").setRequired(false)))
+      .addSubcommand(s => s.setName("panel").setDescription("Post the open-ticket button panel")
+        .addStringOption(o => o.setName("title").setDescription("Panel title").setRequired(false))
+        .addStringOption(o => o.setName("description").setDescription("Panel description").setRequired(false))
+        .addStringOption(o => o.setName("color").setDescription("Embed color hex e.g. #5865F2").setRequired(false)))
+      .addSubcommand(s => s.setName("add").setDescription("Add a user to the current ticket")
+        .addUserOption(o => o.setName("user").setDescription("User to add").setRequired(true)))
+      .addSubcommand(s => s.setName("remove").setDescription("Remove a user from the current ticket")
+        .addUserOption(o => o.setName("user").setDescription("User to remove").setRequired(true)));
+
     try {
       await client.application.commands.set([
         pojCommand.toJSON(),
@@ -86,9 +112,11 @@ module.exports = {
         announceCommand.toJSON(),
         membedCommand.toJSON(),
         vcembedCommand.toJSON(),
-        levelsCommand.toJSON()
+        levelsCommand.toJSON(),
+        starboardCommand.toJSON(),
+        ticketCommand.toJSON()
       ]);
-      console.log("✅ Registered: /poj /boosterrole /welcome /announce /membed /vcembed /levels");
+      console.log("✅ Registered: /poj /boosterrole /welcome /announce /membed /vcembed /levels /starboard /ticket");
     } catch (err) {
       console.error("❌ Slash command registration error:", err);
     }

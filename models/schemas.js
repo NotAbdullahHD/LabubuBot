@@ -27,7 +27,7 @@ const configSchema = new mongoose.Schema({
   },
   booster: {
     channelId: { type: String, default: null },
-    roleId:    { type: String, default: null }  // ✅ ADDED: was missing — boosterrole award never saved the role
+    roleId:    { type: String, default: null }
   },
   welcome: {
     channel:   { type: String, default: null },
@@ -78,7 +78,7 @@ const ecoUserSchema = new mongoose.Schema({
   welcomeSent: { type: Boolean, default: false }
 });
 
-// 9. GUILD STATS — message counts and voice time per user per guild
+// 9. GUILD STATS
 const guildStatsSchema = new mongoose.Schema({
   guildId:       { type: String, required: true },
   userId:        { type: String, required: true },
@@ -111,16 +111,56 @@ const levelConfigSchema = new mongoose.Schema({
   multiplier: { type: Number,  default: 1.0 }
 });
 
+// 12. STARBOARD CONFIG
+const starboardConfigSchema = new mongoose.Schema({
+  guildId:   { type: String,  required: true, unique: true },
+  enabled:   { type: Boolean, default: true },
+  channelId: { type: String,  default: null },
+  emoji:     { type: String,  default: "⭐" },
+  threshold: { type: Number,  default: 3 }
+});
+
+// 13. STARBOARD ENTRY — tracks which messages have already been posted
+const starboardEntrySchema = new mongoose.Schema({
+  guildId:        { type: String, required: true },
+  originalMsgId:  { type: String, required: true, unique: true },
+  starboardMsgId: { type: String, default: null }
+});
+
+// 14. TICKET CONFIG
+const ticketConfigSchema = new mongoose.Schema({
+  guildId:     { type: String, required: true, unique: true },
+  categoryId:  { type: String, default: null },
+  supportRole: { type: String, default: null },
+  logChannel:  { type: String, default: null },
+  counter:     { type: Number, default: 0 }
+});
+
+// 15. TICKET
+const ticketSchema = new mongoose.Schema({
+  guildId:   { type: String, required: true },
+  channelId: { type: String, required: true, unique: true },
+  userId:    { type: String, required: true },
+  claimedBy: { type: String, default: null },
+  ticketNum: { type: Number, required: true },
+  createdAt: { type: Number, default: () => Date.now() }
+});
+ticketSchema.index({ guildId: 1, ticketNum: -1 });
+
 module.exports = {
-  User:        mongoose.model("User",        userSchema),
-  Family:      mongoose.model("Family",      familySchema),
-  Config:      mongoose.model("Config",      configSchema),
-  Giveaway:    mongoose.model("Giveaway",    giveawaySchema),
-  LastFm:      mongoose.model("LastFm",      lastFmSchema),
-  Sobs:        mongoose.model("Sobs",        sobsSchema),
-  BoosterRole: mongoose.model("BoosterRole", boosterRoleSchema),
-  EcoUser:     mongoose.model("EcoUser",     ecoUserSchema),
-  GuildStats:  mongoose.model("GuildStats",  guildStatsSchema),
-  LevelUser:   mongoose.model("LevelUser",   levelUserSchema),
-  LevelConfig: mongoose.model("LevelConfig", levelConfigSchema)
+  User:           mongoose.model("User",           userSchema),
+  Family:         mongoose.model("Family",         familySchema),
+  Config:         mongoose.model("Config",         configSchema),
+  Giveaway:       mongoose.model("Giveaway",       giveawaySchema),
+  LastFm:         mongoose.model("LastFm",         lastFmSchema),
+  Sobs:           mongoose.model("Sobs",           sobsSchema),
+  BoosterRole:    mongoose.model("BoosterRole",    boosterRoleSchema),
+  EcoUser:        mongoose.model("EcoUser",        ecoUserSchema),
+  GuildStats:     mongoose.model("GuildStats",     guildStatsSchema),
+  LevelUser:      mongoose.model("LevelUser",      levelUserSchema),
+  LevelConfig:    mongoose.model("LevelConfig",    levelConfigSchema),
+  StarboardConfig: mongoose.model("StarboardConfig", starboardConfigSchema),
+  StarboardEntry:  mongoose.model("StarboardEntry",  starboardEntrySchema),
+  TicketConfig:   mongoose.model("TicketConfig",   ticketConfigSchema),
+  Ticket:         mongoose.model("Ticket",         ticketSchema)
 };
