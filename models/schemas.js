@@ -120,7 +120,7 @@ const starboardConfigSchema = new mongoose.Schema({
   threshold: { type: Number,  default: 3 }
 });
 
-// 13. STARBOARD ENTRY — tracks which messages have already been posted
+// 13. STARBOARD ENTRY
 const starboardEntrySchema = new mongoose.Schema({
   guildId:        { type: String, required: true },
   originalMsgId:  { type: String, required: true, unique: true },
@@ -147,20 +147,54 @@ const ticketSchema = new mongoose.Schema({
 });
 ticketSchema.index({ guildId: 1, ticketNum: -1 });
 
+// 16. AUTOMOD CONFIG
+const automodConfigSchema = new mongoose.Schema({
+  guildId:      { type: String,  required: true, unique: true },
+  enabled:      { type: Boolean, default: false },
+  // bad words
+  badwords:     { type: Boolean, default: false },
+  wordList:     { type: Array,   default: [] },
+  // anti-spam
+  antispam:     { type: Boolean, default: false },
+  spamCount:    { type: Number,  default: 5  },   // messages
+  spamSeconds:  { type: Number,  default: 3  },   // within X seconds
+  // anti-invite
+  antiinvite:   { type: Boolean, default: false },
+  // punishment: "delete" | "warn" | "timeout"
+  action:       { type: String,  default: "delete" },
+  timeoutMins:  { type: Number,  default: 5 },
+  // exempt roles & channels — never automod these
+  exemptRoles:    { type: Array, default: [] },
+  exemptChannels: { type: Array, default: [] },
+  // log channel
+  logChannel:   { type: String, default: null }
+});
+
+// 17. AUTOMOD WARNS — track warn count per user per guild
+const automodWarnSchema = new mongoose.Schema({
+  guildId:  { type: String, required: true },
+  userId:   { type: String, required: true },
+  warns:    { type: Number, default: 0 },
+  history:  { type: Array,  default: [] }  // [{ reason, timestamp }]
+});
+automodWarnSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+
 module.exports = {
-  User:           mongoose.model("User",           userSchema),
-  Family:         mongoose.model("Family",         familySchema),
-  Config:         mongoose.model("Config",         configSchema),
-  Giveaway:       mongoose.model("Giveaway",       giveawaySchema),
-  LastFm:         mongoose.model("LastFm",         lastFmSchema),
-  Sobs:           mongoose.model("Sobs",           sobsSchema),
-  BoosterRole:    mongoose.model("BoosterRole",    boosterRoleSchema),
-  EcoUser:        mongoose.model("EcoUser",        ecoUserSchema),
-  GuildStats:     mongoose.model("GuildStats",     guildStatsSchema),
-  LevelUser:      mongoose.model("LevelUser",      levelUserSchema),
-  LevelConfig:    mongoose.model("LevelConfig",    levelConfigSchema),
+  User:            mongoose.model("User",            userSchema),
+  Family:          mongoose.model("Family",          familySchema),
+  Config:          mongoose.model("Config",          configSchema),
+  Giveaway:        mongoose.model("Giveaway",        giveawaySchema),
+  LastFm:          mongoose.model("LastFm",          lastFmSchema),
+  Sobs:            mongoose.model("Sobs",            sobsSchema),
+  BoosterRole:     mongoose.model("BoosterRole",     boosterRoleSchema),
+  EcoUser:         mongoose.model("EcoUser",         ecoUserSchema),
+  GuildStats:      mongoose.model("GuildStats",      guildStatsSchema),
+  LevelUser:       mongoose.model("LevelUser",       levelUserSchema),
+  LevelConfig:     mongoose.model("LevelConfig",     levelConfigSchema),
   StarboardConfig: mongoose.model("StarboardConfig", starboardConfigSchema),
   StarboardEntry:  mongoose.model("StarboardEntry",  starboardEntrySchema),
-  TicketConfig:   mongoose.model("TicketConfig",   ticketConfigSchema),
-  Ticket:         mongoose.model("Ticket",         ticketSchema)
+  TicketConfig:    mongoose.model("TicketConfig",    ticketConfigSchema),
+  Ticket:          mongoose.model("Ticket",          ticketSchema),
+  AutomodConfig:   mongoose.model("AutomodConfig",   automodConfigSchema),
+  AutomodWarn:     mongoose.model("AutomodWarn",     automodWarnSchema)
 };

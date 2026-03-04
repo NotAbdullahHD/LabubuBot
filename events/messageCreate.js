@@ -1,5 +1,6 @@
-const economyModule    = require("../commands/economy/economy");
-const { handleXp }     = require("../commands/leveling/levelEngine");
+const economyModule       = require("../commands/economy/economy");
+const { handleXp }        = require("../commands/leveling/levelEngine");
+const { handleAutomod }   = require("../commands/automod/automodEngine");
 const { User, GuildStats } = require("../models/schemas");
 
 const handleEconomyCommands = typeof economyModule.handleEconomyCommands === "function"
@@ -14,9 +15,12 @@ module.exports = {
   name: "messageCreate",
   async execute(message, client) {
     if (message.author.bot) return;
-    if (!message.guild) return;
+    if (!message.guild)     return;
 
-    // ── 1. Track message count ────────────────────────────
+    // ── 1. Automod — runs first before anything else ──────
+    await handleAutomod(message).catch(err => console.error("[Automod] Error:", err.message));
+
+    // ── 2. Track message count ────────────────────────────
     GuildStats.findOneAndUpdate(
       { guildId: message.guild.id, userId: message.author.id },
       {
@@ -26,13 +30,13 @@ module.exports = {
       { upsert: true }
     ).catch(() => {});
 
-    // ── 2. XP / Leveling ──────────────────────────────────
+    // ── 3. XP / Leveling ──────────────────────────────────
     handleXp(message).catch(err => console.error("[Leveling] XP error:", err.message));
 
-    // ── 3. Economy passive income ─────────────────────────
+    // ── 4. Economy passive income ─────────────────────────
     await handleIncomeEvents(message).catch(() => {});
 
-    // ── 4. AFK: welcome back ──────────────────────────────
+    // ── 5. AFK: welcome back ──────────────────────────────
     try {
       const userData = await User.findOne({ userId: message.author.id });
 
@@ -53,7 +57,7 @@ module.exports = {
         if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
       }
 
-      // ── 5. AFK: ping notification ─────────────────────
+      // ── 6. AFK: ping notification ───────────────────────
       if (message.mentions.users.size > 0) {
         for (const [, mentionedUser] of message.mentions.users) {
           if (mentionedUser.bot || mentionedUser.id === message.author.id) continue;
@@ -72,7 +76,7 @@ module.exports = {
       console.error("[messageCreate] AFK error:", err.message);
     }
 
-    // ── 6. Command routing ────────────────────────────────
+    // ── 7. Command routing ────────────────────────────────
     const prefixes   = [">", ",", "!"];
     const prefix     = prefixes.find(p => message.content.startsWith(p));
     if (!prefix) return;
