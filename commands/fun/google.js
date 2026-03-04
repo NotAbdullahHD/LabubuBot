@@ -1,14 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const https = require("https");
 
-// ─────────────────────────────────────────────────────
-//  ,google <query>
-//  Uses Google Custom Search API (free, 100/day)
-//  Requires in .env:
-//    GOOGLE_API_KEY=your_key
-//    GOOGLE_CSE_ID=your_search_engine_id
-// ─────────────────────────────────────────────────────
-
 function fetchJSON(url) {
   return new Promise((resolve, reject) => {
     https.get(url, (res) => {
@@ -35,12 +27,10 @@ module.exports = {
     const cseId  = process.env.GOOGLE_CSE_ID;
 
     if (!apiKey || !cseId) {
-      return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Google Search is not configured yet. Ask the bot owner to add the API key.")] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Google Search is not configured. Ask the bot owner to add `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` to Railway variables.")] });
     }
 
     const query = args.join(" ");
-
-    // Show typing indicator
     await message.channel.sendTyping().catch(() => {});
 
     try {
@@ -49,12 +39,30 @@ module.exports = {
 
       const data = await fetchJSON(url);
 
-      // Handle API errors
+      // Show full error details so we can debug
       if (data.error) {
-        if (data.error.code === 429) {
+        const code     = data.error.code;
+        const message_ = data.error.message;
+        const status   = data.error.status || "unknown";
+        const reason   = data.error.errors?.[0]?.reason || "unknown";
+
+        console.error("[Google] API Error:", JSON.stringify(data.error));
+
+        if (code === 429) {
           return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Daily search limit reached (100/day). Try again tomorrow!")] });
         }
-        return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription(`❌ API Error: \`${data.error.message}\``)] });
+
+        return message.reply({
+          embeds: [new EmbedBuilder()
+            .setColor(0xED4245)
+            .setTitle("❌ Google API Error")
+            .addFields(
+              { name: "Code",    value: `\`${code}\``,     inline: true },
+              { name: "Status",  value: `\`${status}\``,   inline: true },
+              { name: "Reason",  value: `\`${reason}\``,   inline: true },
+              { name: "Message", value: `\`${message_}\`` }
+            )]
+        });
       }
 
       const items = data.items;
@@ -62,23 +70,20 @@ module.exports = {
         return message.reply({ embeds: [new EmbedBuilder().setColor(0xFEE75C).setDescription(`🔍 No results found for **${query}**`)] });
       }
 
-      // Build results
       const results = items.slice(0, 4).map((item, i) => {
         const title   = item.title?.slice(0, 80)   || "No title";
         const snippet = item.snippet?.slice(0, 120) || "No description";
         const link    = item.link;
-        // Clean up domain for display
         const domain  = link.replace(/https?:\/\/(www\.)?/, "").split("/")[0];
         return `**${i + 1}.** [${title}](${link})\n> ${snippet}\n> \`${domain}\``;
       });
 
-      // Get thumbnail from first result if available
       const thumbnail = data.items[0]?.pagemap?.cse_image?.[0]?.src
                      || data.items[0]?.pagemap?.cse_thumbnail?.[0]?.src
                      || null;
 
       const embed = new EmbedBuilder()
-        .setColor(0x4285F4)  // Google blue
+        .setColor(0x4285F4)
         .setTitle(`🔍 Results for: ${query.slice(0, 100)}`)
         .setDescription(results.join("\n\n"))
         .setFooter({
@@ -95,7 +100,7 @@ module.exports = {
 
     } catch (err) {
       console.error("[,google] Error:", err.message);
-      return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Something went wrong while searching. Try again!")] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription(`❌ Error: \`${err.message}\``)] });
     }
   }
 };
