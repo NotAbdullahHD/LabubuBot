@@ -23,11 +23,9 @@ module.exports = {
       return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Usage: `,google <search query>`")] });
     }
 
-    const apiKey = process.env.GOOGLE_API_KEY;
-    const cseId  = process.env.GOOGLE_CSE_ID;
-
-    if (!apiKey || !cseId) {
-      return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Google Search is not configured. Ask the bot owner to add `GOOGLE_API_KEY` and `GOOGLE_CSE_ID` to Railway variables.")] });
+    const apiKey = process.env.SERPAPI_KEY;
+    if (!apiKey) {
+      return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Google Search is not configured. Ask the bot owner to add `SERPAPI_KEY` to Railway variables.")] });
     }
 
     const query = args.join(" ");
@@ -35,37 +33,17 @@ module.exports = {
 
     try {
       const encoded = encodeURIComponent(query);
-      const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${cseId}&q=${encoded}&num=4&safe=active`;
+      const url = `https://serpapi.com/search.json?q=${encoded}&api_key=${apiKey}&num=4&safe=active&engine=google`;
 
       const data = await fetchJSON(url);
 
-      // Show full error details so we can debug
+      // Handle errors
       if (data.error) {
-        const code     = data.error.code;
-        const message_ = data.error.message;
-        const status   = data.error.status || "unknown";
-        const reason   = data.error.errors?.[0]?.reason || "unknown";
-
-        console.error("[Google] API Error:", JSON.stringify(data.error));
-
-        if (code === 429) {
-          return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Daily search limit reached (100/day). Try again tomorrow!")] });
-        }
-
-        return message.reply({
-          embeds: [new EmbedBuilder()
-            .setColor(0xED4245)
-            .setTitle("❌ Google API Error")
-            .addFields(
-              { name: "Code",    value: `\`${code}\``,     inline: true },
-              { name: "Status",  value: `\`${status}\``,   inline: true },
-              { name: "Reason",  value: `\`${reason}\``,   inline: true },
-              { name: "Message", value: `\`${message_}\`` }
-            )]
-        });
+        console.error("[Google] SerpApi Error:", data.error);
+        return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription(`❌ Search error: \`${data.error}\``)] });
       }
 
-      const items = data.items;
+      const items = data.organic_results;
       if (!items || items.length === 0) {
         return message.reply({ embeds: [new EmbedBuilder().setColor(0xFEE75C).setDescription(`🔍 No results found for **${query}**`)] });
       }
@@ -78,8 +56,9 @@ module.exports = {
         return `**${i + 1}.** [${title}](${link})\n> ${snippet}\n> \`${domain}\``;
       });
 
-      const thumbnail = data.items[0]?.pagemap?.cse_image?.[0]?.src
-                     || data.items[0]?.pagemap?.cse_thumbnail?.[0]?.src
+      // Thumbnail from knowledge graph or first result image
+      const thumbnail = data.knowledge_graph?.thumbnail
+                     || data.organic_results?.[0]?.thumbnail
                      || null;
 
       const embed = new EmbedBuilder()
@@ -87,7 +66,7 @@ module.exports = {
         .setTitle(`🔍 Results for: ${query.slice(0, 100)}`)
         .setDescription(results.join("\n\n"))
         .setFooter({
-          text: `Google Custom Search  •  ${data.searchInformation?.totalResults ? Number(data.searchInformation.totalResults).toLocaleString() : "?"} results`,
+          text: `Google Search via SerpApi`,
           iconURL: "https://www.google.com/favicon.ico"
         })
         .setTimestamp();
