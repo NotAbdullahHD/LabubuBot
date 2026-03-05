@@ -170,6 +170,16 @@ const automodConfigSchema = new mongoose.Schema({
   logChannel:   { type: String, default: null }
 });
 
+// 18. FLAG SCORE — per user per guild flag game score
+const flagScoreSchema = new mongoose.Schema({
+  guildId:  { type: String, required: true },
+  userId:   { type: String, required: true },
+  username: { type: String, default: "Unknown" },
+  score:    { type: Number, default: 0 }
+});
+flagScoreSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+flagScoreSchema.index({ guildId: 1, score: -1 });
+
 // 17. AUTOMOD WARNS — track warn count per user per guild
 const automodWarnSchema = new mongoose.Schema({
   guildId:  { type: String, required: true },
@@ -196,5 +206,6 @@ module.exports = {
   TicketConfig:    mongoose.model("TicketConfig",    ticketConfigSchema),
   Ticket:          mongoose.model("Ticket",          ticketSchema),
   AutomodConfig:   mongoose.model("AutomodConfig",   automodConfigSchema),
-  AutomodWarn:     mongoose.model("AutomodWarn",     automodWarnSchema)
+  AutomodWarn:     mongoose.model("AutomodWarn",     automodWarnSchema),
+  FlagScore:       mongoose.model("FlagScore",       flagScoreSchema)
 };
