@@ -1,18 +1,17 @@
-const { ActivityType, SlashCommandBuilder, ChannelType } = require("discord.js");
+const { ActivityType, SlashCommandBuilder } = require("discord.js");
 const giveawayCommand      = require("../commands/admin/giveaway.js");
 const { startVoiceIncome } = require("../commands/economy/economy.js");
 const { startMembedLoop }  = require("../commands/utility/membed.js");
 const { startVcembedLoop } = require("../commands/utility/vcembed.js");
 
 module.exports = {
-  name: "clientReady",
+  name: "ready",
   once: true,
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
-    const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
     client.user.setPresence({
-      activities: [{ name: `${totalMembers} members`, type: ActivityType.Watching }],
+      activities: [{ name: "Deli by Ice Spice", type: ActivityType.Listening }],
       status: "online"
     });
 
@@ -63,7 +62,7 @@ module.exports = {
       .addSubcommand(s => s.setName("channel").setDescription("Set level-up announcement channel")
         .addChannelOption(o => o.setName("channel").setDescription("Channel (leave empty = same channel)").setRequired(false)))
       .addSubcommand(s => s.setName("multiplier").setDescription("Set XP multiplier")
-        .addNumberOption(o => o.setName("value").setDescription("Multiplier 0.1–10").setRequired(true)))
+        .addNumberOption(o => o.setName("value").setDescription("Multiplier 0.1-10").setRequired(true)))
       .addSubcommand(s => s.setName("message").setDescription("Set custom level-up embed (opens form)"))
       .addSubcommand(s => s.setName("add").setDescription("Add a role reward")
         .addIntegerOption(o => o.setName("level").setDescription("Level required").setRequired(true))
@@ -71,7 +70,7 @@ module.exports = {
       .addSubcommand(s => s.setName("remove").setDescription("Remove a role reward")
         .addIntegerOption(o => o.setName("level").setDescription("Level to remove").setRequired(true)))
       .addSubcommand(s => s.setName("rewards").setDescription("List all role rewards"))
-      .addSubcommand(s => s.setName("reset").setDescription("Reset a user's XP")
+      .addSubcommand(s => s.setName("reset").setDescription("Reset a user XP")
         .addUserOption(o => o.setName("user").setDescription("User to reset").setRequired(true)))
       .addSubcommand(s => s.setName("info").setDescription("View leveling settings"));
 
@@ -79,7 +78,7 @@ module.exports = {
       .setName("starboard").setDescription("Configure the starboard system")
       .addSubcommand(s => s.setName("set").setDescription("Set up starboard")
         .addChannelOption(o => o.setName("channel").setDescription("Starboard channel").setRequired(true))
-        .addStringOption(o => o.setName("emoji").setDescription("Reaction emoji (default ⭐)").setRequired(false))
+        .addStringOption(o => o.setName("emoji").setDescription("Reaction emoji (default star)").setRequired(false))
         .addIntegerOption(o => o.setName("threshold").setDescription("Reactions needed (default 3)").setRequired(false)))
       .addSubcommand(s => s.setName("enable").setDescription("Enable starboard"))
       .addSubcommand(s => s.setName("disable").setDescription("Disable starboard"))
@@ -100,14 +99,12 @@ module.exports = {
       .addSubcommand(s => s.setName("remove").setDescription("Remove a user from this ticket")
         .addUserOption(o => o.setName("user").setDescription("User to remove").setRequired(true)));
 
-    // ── /automod ──────────────────────────────────────────
     const automodCommand = new SlashCommandBuilder()
       .setName("automod").setDescription("Configure the automod system")
       .addSubcommand(s => s.setName("enable").setDescription("Enable automod"))
       .addSubcommand(s => s.setName("disable").setDescription("Disable automod"))
       .addSubcommand(s => s.setName("badwords").setDescription("Manage bad word filter")
-        .addStringOption(o => o.setName("toggle")
-          .setDescription("Action").setRequired(true)
+        .addStringOption(o => o.setName("toggle").setDescription("Action").setRequired(true)
           .addChoices(
             { name: "on",     value: "on"     },
             { name: "off",    value: "off"    },
@@ -117,40 +114,35 @@ module.exports = {
           ))
         .addStringOption(o => o.setName("word").setDescription("Word to add or remove").setRequired(false)))
       .addSubcommand(s => s.setName("antispam").setDescription("Configure anti-spam")
-        .addStringOption(o => o.setName("toggle")
-          .setDescription("Action").setRequired(true)
+        .addStringOption(o => o.setName("toggle").setDescription("Action").setRequired(true)
           .addChoices(
             { name: "on",  value: "on"  },
             { name: "off", value: "off" },
             { name: "set", value: "set" }
           ))
-        .addIntegerOption(o => o.setName("count").setDescription("Max messages before trigger (default 5)").setRequired(false))
-        .addIntegerOption(o => o.setName("seconds").setDescription("Time window in seconds (default 3)").setRequired(false)))
+        .addIntegerOption(o => o.setName("count").setDescription("Max messages before trigger").setRequired(false))
+        .addIntegerOption(o => o.setName("seconds").setDescription("Time window in seconds").setRequired(false)))
       .addSubcommand(s => s.setName("antiinvite").setDescription("Block Discord invite links")
-        .addStringOption(o => o.setName("toggle")
-          .setDescription("on or off").setRequired(true)
+        .addStringOption(o => o.setName("toggle").setDescription("on or off").setRequired(true)
           .addChoices(
             { name: "on",  value: "on"  },
             { name: "off", value: "off" }
           )))
       .addSubcommand(s => s.setName("action").setDescription("Set punishment for violations")
-        .addStringOption(o => o.setName("type")
-          .setDescription("Punishment type").setRequired(true)
+        .addStringOption(o => o.setName("type").setDescription("Punishment type").setRequired(true)
           .addChoices(
             { name: "Delete message only", value: "delete"  },
             { name: "Delete + warn user",  value: "warn"    },
             { name: "Delete + timeout",    value: "timeout" }
           ))
-        .addIntegerOption(o => o.setName("timeout_mins").setDescription("Timeout duration in minutes (default 5)").setRequired(false)))
-      .addSubcommand(s => s.setName("exempt").setDescription("Add/remove exempt roles or channels")
-        .addStringOption(o => o.setName("type")
-          .setDescription("Role or channel").setRequired(true)
+        .addIntegerOption(o => o.setName("timeout_mins").setDescription("Timeout duration in minutes").setRequired(false)))
+      .addSubcommand(s => s.setName("exempt").setDescription("Exempt roles or channels from automod")
+        .addStringOption(o => o.setName("type").setDescription("Role or channel").setRequired(true)
           .addChoices(
             { name: "role",    value: "role"    },
             { name: "channel", value: "channel" }
           ))
-        .addStringOption(o => o.setName("action")
-          .setDescription("Add or remove").setRequired(true)
+        .addStringOption(o => o.setName("action").setDescription("Add or remove").setRequired(true)
           .addChoices(
             { name: "add",    value: "add"    },
             { name: "remove", value: "remove" }

@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const https = require("https");
 
 function fetchJSON(url) {
@@ -14,35 +14,6 @@ function fetchJSON(url) {
   });
 }
 
-// ── Build embed for a single result page ─────────────────
-function buildEmbed(item, index, total, query, type) {
-  const embed = new EmbedBuilder()
-    .setAuthor({ name: message_author_placeholder })  // filled in below
-    .setColor(0x4285F4)
-    .setFooter({
-      text: `Page ${index + 1}/${total} of Google ${type === "image" ? "Images" : "Search"} (Safe Mode)`,
-      iconURL: "https://www.google.com/favicon.ico"
-    });
-
-  if (type === "image") {
-    embed.setTitle(`${item.title?.slice(0, 100) || "Image result"}`);
-    if (item.original) embed.setImage(item.original);
-    else if (item.thumbnail) embed.setImage(item.thumbnail);
-    const domain = item.link?.replace(/https?:\/\/(www\.)?/, "").split("/")[0] || "";
-    if (domain) embed.setDescription(`[${domain}](${item.link})`);
-  } else {
-    const title   = item.title?.slice(0, 80) || "No title";
-    const snippet = item.snippet?.slice(0, 300) || "No description";
-    const link    = item.link || "";
-    const domain  = link.replace(/https?:\/\/(www\.)?/, "").split("/")[0];
-    embed.setTitle(title).setURL(link).setDescription(`${snippet}\n\n\`${domain}\``);
-    if (item.thumbnail) embed.setThumbnail(item.thumbnail);
-  }
-
-  return embed;
-}
-
-// ── Build pagination row ──────────────────────────────────
 function buildRow(index, total, disabled = false) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
@@ -77,8 +48,8 @@ module.exports = {
       return message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription("❌ Search not configured. Ask the bot owner to add `SERPAPI_KEY`.")] });
     }
 
-    // Detect if this was called as ,image
-    const type = (message.content.startsWith(",image") || message.content.startsWith(">image") || message.content.startsWith("!image")) ? "image" : "web";
+    const content = message.content.toLowerCase();
+    const type = (content.startsWith(",image") || content.startsWith(">image") || content.startsWith("!image")) ? "image" : "web";
     const query = args.join(" ");
 
     await message.channel.sendTyping().catch(() => {});
@@ -104,7 +75,6 @@ module.exports = {
       let index = 0;
       const total = Math.min(items.length, 10);
 
-      // Build first embed
       const makeEmbed = (i) => {
         const item = items[i];
         const embed = new EmbedBuilder()
@@ -116,14 +86,14 @@ module.exports = {
           });
 
         if (type === "image") {
-          embed.setTitle(item.title?.slice(0, 100) || "Image result");
+          embed.setTitle((item.title || "Image result").slice(0, 100));
           const img = item.original || item.thumbnail;
           if (img) embed.setImage(img);
-          const domain = item.link?.replace(/https?:\/\/(www\.)?/, "").split("/")[0] || "";
+          const domain = (item.link || "").replace(/https?:\/\/(www\.)?/, "").split("/")[0];
           if (domain) embed.setDescription(`[${domain}](${item.link})`);
         } else {
-          const title   = item.title?.slice(0, 80)   || "No title";
-          const snippet = item.snippet?.slice(0, 300) || "No description";
+          const title   = (item.title   || "No title").slice(0, 80);
+          const snippet = (item.snippet || "No description").slice(0, 300);
           const link    = item.link || "";
           const domain  = link.replace(/https?:\/\/(www\.)?/, "").split("/")[0];
           embed.setTitle(title).setURL(link).setDescription(`${snippet}\n\n\`${domain}\``);
@@ -138,10 +108,9 @@ module.exports = {
         components: [buildRow(index, total)]
       });
 
-      // ── Button collector ─────────────────────────────
       const collector = reply.createMessageComponentCollector({
         filter: i => i.user.id === message.author.id,
-        time:   120_000  // 2 minutes
+        time:   120_000
       });
 
       collector.on("collect", async interaction => {
@@ -152,7 +121,6 @@ module.exports = {
           await reply.delete().catch(() => {});
           return;
         }
-
         await interaction.update({
           embeds:     [makeEmbed(index)],
           components: [buildRow(index, total)]
@@ -161,7 +129,6 @@ module.exports = {
 
       collector.on("end", (_, reason) => {
         if (reason === "closed") return;
-        // Disable buttons after timeout
         reply.edit({ components: [buildRow(index, total, true)] }).catch(() => {});
       });
 
