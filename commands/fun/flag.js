@@ -311,7 +311,7 @@ module.exports = {
       if (interaction.customId === `flag_hint_${channelId}`) {
         const hint = buildHint(flag.name);
         await interaction.deferUpdate(); // don't show "thinking"
-        await message.channel.send(`🔵 **${interaction.user}** requested a hint:\n${flagUrl(flag.img)} Hint: \`${hint}\``);
+        await message.channel.send(`🔵 **${interaction.user}** requested a hint:\nHint: \`${hint}\``);
         return;
       }
 
