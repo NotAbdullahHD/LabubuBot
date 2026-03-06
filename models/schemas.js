@@ -189,6 +189,16 @@ const automodWarnSchema = new mongoose.Schema({
 });
 automodWarnSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
+// 19. SHOP ITEM — items owned by users that generate passive income
+const shopItemSchema = new mongoose.Schema({
+  userId:      { type: String, required: true },
+  itemId:      { type: String, required: true },
+  name:        { type: String, required: true },
+  incomePerHr: { type: Number, required: true },
+  lastPaid:    { type: Number, default: Date.now }
+});
+shopItemSchema.index({ userId: 1, itemId: 1 }, { unique: true });
+
 module.exports = {
   User:            mongoose.model("User",            userSchema),
   Family:          mongoose.model("Family",          familySchema),
@@ -207,5 +217,6 @@ module.exports = {
   Ticket:          mongoose.model("Ticket",          ticketSchema),
   AutomodConfig:   mongoose.model("AutomodConfig",   automodConfigSchema),
   AutomodWarn:     mongoose.model("AutomodWarn",     automodWarnSchema),
-  FlagScore:       mongoose.model("FlagScore",       flagScoreSchema)
+  FlagScore:       mongoose.model("FlagScore",       flagScoreSchema),
+  ShopItem:        mongoose.model("ShopItem",        shopItemSchema)
 };
