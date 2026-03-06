@@ -13,7 +13,6 @@
   "dependencies": {
     "@types/node": "^22.13.11",
     "axios": "^1.13.5",
-    "canvas": "^2.11.2",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.4",
     "mongoose": "^9.2.1"
