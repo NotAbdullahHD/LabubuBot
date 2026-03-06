@@ -189,7 +189,17 @@ const automodWarnSchema = new mongoose.Schema({
 });
 automodWarnSchema.index({ guildId: 1, userId: 1 }, { unique: true });
 
-// 19. SHOP ITEM — items owned by users that generate passive income
+// 19. TRIVIA SCORE
+const triviaScoreSchema = new mongoose.Schema({
+  guildId:  { type: String, required: true },
+  userId:   { type: String, required: true },
+  username: { type: String, required: true },
+  score:    { type: Number, default: 0 }
+});
+triviaScoreSchema.index({ guildId: 1, userId: 1 }, { unique: true });
+triviaScoreSchema.index({ guildId: 1, score: -1 });
+
+// 20. SHOP ITEM — items owned by users that generate passive income
 const shopItemSchema = new mongoose.Schema({
   userId:      { type: String, required: true },
   itemId:      { type: String, required: true },
@@ -218,5 +228,6 @@ module.exports = {
   AutomodConfig:   mongoose.model("AutomodConfig",   automodConfigSchema),
   AutomodWarn:     mongoose.model("AutomodWarn",     automodWarnSchema),
   FlagScore:       mongoose.model("FlagScore",       flagScoreSchema),
+  TriviaScore:     mongoose.model("TriviaScore",     triviaScoreSchema),
   ShopItem:        mongoose.model("ShopItem",        shopItemSchema)
 };
