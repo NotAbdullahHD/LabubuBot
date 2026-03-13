@@ -9,7 +9,8 @@ module.exports = {
     const guildId = message.guild.id;
 
     // Fetch top 50 users by wallet from DB
-    const all = await EcoUser.find({}).sort({ wallet: -1 }).limit(50);
+    const all = await EcoUser.find({}).limit(500);
+    all.sort((a, b) => ((b.wallet || 0) + (b.bank || 0)) - ((a.wallet || 0) + (a.bank || 0)));
 
     if (!all.length) {
       return message.reply({
