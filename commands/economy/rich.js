@@ -8,16 +8,30 @@ module.exports = {
   async execute(message) {
     const guildId = message.guild.id;
 
-    // Fetch all users with money, sorted by total (wallet + bank)
-    const all = await EcoUser.find({}).sort({ wallet: -1 }).limit(100);
+    // Fetch top 50 users by wallet from DB
+    const all = await EcoUser.find({}).sort({ wallet: -1 }).limit(50);
 
-    // Filter to guild members only
-    const members = await message.guild.members.fetch();
-    const memberIds = new Set(members.map(m => m.id));
+    if (!all.length) {
+      return message.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0x2b2d31)
+          .setDescription("No economy data yet! Start earning with `,work` and `,daily`")
+        ]
+      });
+    }
 
-    const filtered = all
-      .filter(u => memberIds.has(u.userId))
-      .slice(0, 50);
+    // Fetch only the specific members we need one by one
+    const userCache = new Map();
+    for (const u of all) {
+      try {
+        const member = await message.guild.members.fetch(u.userId);
+        userCache.set(u.userId, member);
+      } catch {
+        // user left the server, skip
+      }
+    }
+
+    const filtered = all.filter(u => userCache.has(u.userId));
 
     if (!filtered.length) {
       return message.reply({
@@ -32,19 +46,18 @@ module.exports = {
     let page = 0;
 
     async function buildEmbed(p) {
-      const slice = filtered.slice(p * 10, p * 10 + 10);
+      const slice  = filtered.slice(p * 10, p * 10 + 10);
       const medals = ["🥇", "🥈", "🥉"];
 
-      const lines = await Promise.all(slice.map(async (u, i) => {
+      const lines = slice.map((u, i) => {
         const rank   = p * 10 + i + 1;
         const medal  = rank <= 3 ? medals[rank - 1] : `**${rank}.**`;
-        const member = members.get(u.userId);
-        const name   = member ? member.displayName : u.userId;
+        const member = userCache.get(u.userId);
+        const name   = member ? member.displayName : "Unknown";
         const total  = (u.wallet || 0) + (u.bank || 0);
         return `${medal} **${name}** — 💰 ${total.toLocaleString()} coins`;
-      }));
+      });
 
-      // Highlight requester's rank
       const myEntry = filtered.findIndex(u => u.userId === message.author.id);
       const myRank  = myEntry !== -1 ? `\nYour rank: **#${myEntry + 1}**` : "";
 
@@ -52,7 +65,7 @@ module.exports = {
         .setTitle("💰 Richest Members")
         .setDescription(lines.join("\n") + myRank)
         .setColor(0xFFD700)
-        .setThumbnail(message.guild.iconURL())
+        .setThumbnail(message.guild.iconURL() || null)
         .setFooter({ text: `Page ${p + 1}/${pages} • Total tracked: ${filtered.length} members` });
     }
 
