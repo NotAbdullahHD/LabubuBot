@@ -75,7 +75,8 @@ const ecoUserSchema = new mongoose.Schema({
   aura:        { type: Number,  default: 0 },
   lastWork:    { type: Number,  default: 0 },
   lastDaily:   { type: Number,  default: 0 },
-  welcomeSent: { type: Boolean, default: false }
+  welcomeSent: { type: Boolean, default: false },
+  _lastTax:    { type: Number,  default: 0 }
 });
 
 // 9. GUILD STATS
