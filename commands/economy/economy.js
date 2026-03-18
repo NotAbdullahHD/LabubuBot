@@ -385,8 +385,6 @@ async function handleEconomyCommands(message, args, cmd) {
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
     // Silent bet cap
-    const cap = maxBetAllowed(data);
-    if (amount > cap) return message.reply(`❌ Not enough coins in your wallet.`);
 
     // Silent odds penalty for wealthy users
     const penalty = wealthOddsPenalty(data);
@@ -410,8 +408,6 @@ async function handleEconomyCommands(message, args, cmd) {
     if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,mines <amount>`');
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
-    const cap = maxBetAllowed(data);
-    if (amount > cap) return message.reply(`❌ Not enough coins in your wallet.`);
 
     const penalty = wealthOddsPenalty(data);
     if (Math.random() < 0.60 * penalty) {
@@ -434,8 +430,6 @@ async function handleEconomyCommands(message, args, cmd) {
     if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,plinko <amount>`');
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
-    const cap = maxBetAllowed(data);
-    if (amount > cap) return message.reply(`❌ Not enough coins in your wallet.`);
 
     const penalty = wealthOddsPenalty(data);
     // Richer users get weighted toward lower multipliers silently
@@ -461,8 +455,6 @@ async function handleEconomyCommands(message, args, cmd) {
     if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,bj <amount>`');
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
-    const cap = maxBetAllowed(data);
-    if (amount > cap) return message.reply(`❌ Not enough coins in your wallet.`);
 
     const penalty = wealthOddsPenalty(data);
 
