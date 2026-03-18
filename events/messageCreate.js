@@ -1,7 +1,6 @@
-const economyModule       = require("../commands/economy/economy");
-const { handleXp }        = require("../commands/leveling/levelEngine");
-const { handleAutomod }   = require("../commands/automod/automodEngine");
-const { User, GuildStats } = require("../models/schemas");
+const economyModule    = require("../commands/economy/economy");
+const { handleXp }     = require("../commands/leveling/levelEngine");
+const { User, GuildStats, AutoReact, TriggerReact } = require("../models/schemas");
 
 const handleEconomyCommands = typeof economyModule.handleEconomyCommands === "function"
   ? economyModule.handleEconomyCommands
@@ -15,12 +14,9 @@ module.exports = {
   name: "messageCreate",
   async execute(message, client) {
     if (message.author.bot) return;
-    if (!message.guild)     return;
+    if (!message.guild) return;
 
-    // ── 1. Automod — runs first before anything else ──────
-    await handleAutomod(message).catch(err => console.error("[Automod] Error:", err.message));
-
-    // ── 2. Track message count ────────────────────────────
+    // ── 1. Track message count ────────────────────────────
     GuildStats.findOneAndUpdate(
       { guildId: message.guild.id, userId: message.author.id },
       {
@@ -30,13 +26,13 @@ module.exports = {
       { upsert: true }
     ).catch(() => {});
 
-    // ── 3. XP / Leveling ──────────────────────────────────
+    // ── 2. XP / Leveling ──────────────────────────────────
     handleXp(message).catch(err => console.error("[Leveling] XP error:", err.message));
 
-    // ── 4. Economy passive income ─────────────────────────
+    // ── 3. Economy passive income ─────────────────────────
     await handleIncomeEvents(message).catch(() => {});
 
-    // ── 5. AFK: welcome back ──────────────────────────────
+    // ── 4. AFK: welcome back ──────────────────────────────
     try {
       const userData = await User.findOne({ userId: message.author.id });
 
@@ -57,7 +53,7 @@ module.exports = {
         if (reply) setTimeout(() => reply.delete().catch(() => {}), 6000);
       }
 
-      // ── 6. AFK: ping notification ───────────────────────
+      // ── 5. AFK: ping notification ─────────────────────
       if (message.mentions.users.size > 0) {
         for (const [, mentionedUser] of message.mentions.users) {
           if (mentionedUser.bot || mentionedUser.id === message.author.id) continue;
@@ -76,7 +72,28 @@ module.exports = {
       console.error("[messageCreate] AFK error:", err.message);
     }
 
-    // ── 7. Command routing ────────────────────────────────
+    // ── 6. Auto React — react to every message in configured channels ──
+    try {
+      const autoReacts = await AutoReact.find({ guildId: message.guild.id, channelId: message.channel.id });
+      for (const ar of autoReacts) {
+        for (const emoji of ar.emojis) {
+          await message.react(emoji).catch(() => {});
+        }
+      }
+    } catch {}
+
+    // ── 7. Trigger React — react when message contains trigger word ──
+    try {
+      const triggers = await TriggerReact.find({ guildId: message.guild.id });
+      const content  = message.content.toLowerCase();
+      for (const tr of triggers) {
+        if (content.includes(tr.trigger)) {
+          await message.react(tr.emoji).catch(() => {});
+        }
+      }
+    } catch {}
+
+    // ── 8. Command routing ────────────────────────────────
     const prefixes   = [">", ",", "!"];
     const prefix     = prefixes.find(p => message.content.startsWith(p));
     if (!prefix) return;

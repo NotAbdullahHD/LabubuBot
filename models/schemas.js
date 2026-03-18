@@ -210,6 +210,28 @@ const shopItemSchema = new mongoose.Schema({
 });
 shopItemSchema.index({ userId: 1, itemId: 1 }, { unique: true });
 
+// 21. AUTO REACT — auto react to every message in specific channels
+const autoReactSchema = new mongoose.Schema({
+  guildId:   { type: String, required: true },
+  channelId: { type: String, required: true },
+  emojis:    [{ type: String }]
+});
+autoReactSchema.index({ guildId: 1, channelId: 1 }, { unique: true });
+
+// 22. TRIGGER REACT — react to messages containing a trigger word
+const triggerReactSchema = new mongoose.Schema({
+  guildId: { type: String, required: true },
+  trigger: { type: String, required: true },
+  emoji:   { type: String, required: true }
+});
+triggerReactSchema.index({ guildId: 1, trigger: 1 }, { unique: true });
+
+// 23. VC ROLE — role given to users while in a voice channel
+const vcRoleSchema = new mongoose.Schema({
+  guildId: { type: String, required: true, unique: true },
+  roleId:  { type: String, required: true }
+});
+
 module.exports = {
   User:            mongoose.model("User",            userSchema),
   Family:          mongoose.model("Family",          familySchema),
@@ -230,5 +252,8 @@ module.exports = {
   AutomodWarn:     mongoose.model("AutomodWarn",     automodWarnSchema),
   FlagScore:       mongoose.model("FlagScore",       flagScoreSchema),
   TriviaScore:     mongoose.model("TriviaScore",     triviaScoreSchema),
-  ShopItem:        mongoose.model("ShopItem",        shopItemSchema)
+  ShopItem:        mongoose.model("ShopItem",        shopItemSchema),
+  AutoReact:       mongoose.model("AutoReact",       autoReactSchema),
+  TriggerReact:    mongoose.model("TriggerReact",    triggerReactSchema),
+  VcRole:          mongoose.model("VcRole",          vcRoleSchema)
 };

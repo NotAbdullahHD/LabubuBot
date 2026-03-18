@@ -1,8 +1,8 @@
 const { ActivityType, SlashCommandBuilder } = require("discord.js");
-const giveawayCommand      = require("../commands/admin/giveaway.js");
-const { startVoiceIncome } = require("../commands/economy/economy.js");
-const { startMembedLoop }  = require("../commands/utility/membed.js");
-const { startVcembedLoop } = require("../commands/utility/vcembed.js");
+const giveawayCommand  = require("../commands/admin/giveaway.js");
+const { startVoiceIncome }  = require("../commands/economy/economy.js");
+const { startMembedLoop }   = require("../commands/utility/membed.js");
+const { startVcembedLoop }  = require("../commands/utility/vcembed.js");
 
 module.exports = {
   name: "ready",
@@ -10,15 +10,31 @@ module.exports = {
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
 
+    const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
     client.user.setPresence({
-      activities: [{ name: "Deli by Ice Spice", type: ActivityType.Listening }],
+      activities: [{ name: `${totalMembers} users`, type: ActivityType.Watching }],
       status: "online"
+    });
+
+    // Force mobile/phone status
+    client.ws.shards.forEach(shard => {
+      shard.send({
+        op: 3,
+        d: {
+          since: null,
+          activities: [{ name: `${totalMembers} users`, type: 3 }],
+          status: "online",
+          afk: false
+        }
+      });
     });
 
     giveawayCommand.startChecker(client);
     startVoiceIncome(client);
     startMembedLoop(client);
     startVcembedLoop(client);
+
+    // ── Slash Command Definitions ─────────────────────────
 
     const pojCommand = new SlashCommandBuilder()
       .setName("poj").setDescription("Ping on join system")
@@ -55,103 +71,50 @@ module.exports = {
       .setName("vcembed").setDescription("Post live top-10 voice time leaderboard")
       .addSubcommand(s => s.setName("send").setDescription("Send to this channel"));
 
+    // ── /levels ───────────────────────────────────────────
     const levelsCommand = new SlashCommandBuilder()
       .setName("levels").setDescription("Configure the leveling system")
       .addSubcommand(s => s.setName("enable").setDescription("Enable XP leveling"))
       .addSubcommand(s => s.setName("disable").setDescription("Disable XP leveling"))
       .addSubcommand(s => s.setName("channel").setDescription("Set level-up announcement channel")
-        .addChannelOption(o => o.setName("channel").setDescription("Channel (leave empty = same channel)").setRequired(false)))
-      .addSubcommand(s => s.setName("multiplier").setDescription("Set XP multiplier")
-        .addNumberOption(o => o.setName("value").setDescription("Multiplier 0.1-10").setRequired(true)))
+        .addChannelOption(o => o.setName("channel").setDescription("Channel (leave empty = same channel as message)").setRequired(false)))
+      .addSubcommand(s => s.setName("multiplier").setDescription("Set XP multiplier (default 1×)")
+        .addNumberOption(o => o.setName("value").setDescription("Multiplier 0.1–10 (e.g. 2 = double XP)").setRequired(true)))
       .addSubcommand(s => s.setName("message").setDescription("Set custom level-up embed (opens form)"))
-      .addSubcommand(s => s.setName("add").setDescription("Add a role reward")
+      .addSubcommand(s => s.setName("add").setDescription("Add a role reward for reaching a level")
         .addIntegerOption(o => o.setName("level").setDescription("Level required").setRequired(true))
         .addRoleOption(o => o.setName("role").setDescription("Role to award").setRequired(true)))
       .addSubcommand(s => s.setName("remove").setDescription("Remove a role reward")
-        .addIntegerOption(o => o.setName("level").setDescription("Level to remove").setRequired(true)))
+        .addIntegerOption(o => o.setName("level").setDescription("Level to remove reward from").setRequired(true)))
       .addSubcommand(s => s.setName("rewards").setDescription("List all role rewards"))
-      .addSubcommand(s => s.setName("reset").setDescription("Reset a user XP")
+      .addSubcommand(s => s.setName("reset").setDescription("Reset a user's XP and level")
         .addUserOption(o => o.setName("user").setDescription("User to reset").setRequired(true)))
-      .addSubcommand(s => s.setName("info").setDescription("View leveling settings"));
+      .addSubcommand(s => s.setName("info").setDescription("View current leveling settings"));
 
-    const starboardCommand = new SlashCommandBuilder()
-      .setName("starboard").setDescription("Configure the starboard system")
-      .addSubcommand(s => s.setName("set").setDescription("Set up starboard")
-        .addChannelOption(o => o.setName("channel").setDescription("Starboard channel").setRequired(true))
-        .addStringOption(o => o.setName("emoji").setDescription("Reaction emoji (default star)").setRequired(false))
-        .addIntegerOption(o => o.setName("threshold").setDescription("Reactions needed (default 3)").setRequired(false)))
-      .addSubcommand(s => s.setName("enable").setDescription("Enable starboard"))
-      .addSubcommand(s => s.setName("disable").setDescription("Disable starboard"))
-      .addSubcommand(s => s.setName("info").setDescription("View starboard settings"));
+    const autoReactCommand = new SlashCommandBuilder()
+      .setName("autoreact").setDescription("Auto react to every message in a channel")
+      .addSubcommand(s => s.setName("set").setDescription("Set auto react for a channel")
+        .addChannelOption(o => o.setName("channel").setDescription("Channel").setRequired(true))
+        .addStringOption(o => o.setName("emojis").setDescription("Emojis to react with (space separated, max 5)").setRequired(true)))
+      .addSubcommand(s => s.setName("remove").setDescription("Remove auto react from a channel")
+        .addChannelOption(o => o.setName("channel").setDescription("Channel").setRequired(true)))
+      .addSubcommand(s => s.setName("list").setDescription("List all auto react channels"));
 
-    const ticketCommand = new SlashCommandBuilder()
-      .setName("ticket").setDescription("Configure the ticket system")
-      .addSubcommand(s => s.setName("setup").setDescription("Set up ticket system")
-        .addChannelOption(o => o.setName("category").setDescription("Category for tickets").setRequired(false))
-        .addRoleOption(o => o.setName("role").setDescription("Support role").setRequired(false))
-        .addChannelOption(o => o.setName("logs").setDescription("Log channel").setRequired(false)))
-      .addSubcommand(s => s.setName("panel").setDescription("Post the open-ticket button")
-        .addStringOption(o => o.setName("title").setDescription("Panel title").setRequired(false))
-        .addStringOption(o => o.setName("description").setDescription("Panel description").setRequired(false))
-        .addStringOption(o => o.setName("color").setDescription("Embed color hex").setRequired(false)))
-      .addSubcommand(s => s.setName("add").setDescription("Add a user to this ticket")
-        .addUserOption(o => o.setName("user").setDescription("User to add").setRequired(true)))
-      .addSubcommand(s => s.setName("remove").setDescription("Remove a user from this ticket")
-        .addUserOption(o => o.setName("user").setDescription("User to remove").setRequired(true)));
+    const treactionCommand = new SlashCommandBuilder()
+      .setName("treaction").setDescription("React with emoji when a trigger word is said")
+      .addSubcommand(s => s.setName("set").setDescription("Add a trigger reaction")
+        .addStringOption(o => o.setName("trigger").setDescription("Word or phrase to trigger on").setRequired(true))
+        .addStringOption(o => o.setName("emoji").setDescription("Emoji to react with").setRequired(true)))
+      .addSubcommand(s => s.setName("remove").setDescription("Remove a trigger reaction")
+        .addStringOption(o => o.setName("trigger").setDescription("Trigger to remove").setRequired(true)))
+      .addSubcommand(s => s.setName("list").setDescription("List all trigger reactions"));
 
-    const automodCommand = new SlashCommandBuilder()
-      .setName("automod").setDescription("Configure the automod system")
-      .addSubcommand(s => s.setName("enable").setDescription("Enable automod"))
-      .addSubcommand(s => s.setName("disable").setDescription("Disable automod"))
-      .addSubcommand(s => s.setName("badwords").setDescription("Manage bad word filter")
-        .addStringOption(o => o.setName("toggle").setDescription("Action").setRequired(true)
-          .addChoices(
-            { name: "on",     value: "on"     },
-            { name: "off",    value: "off"    },
-            { name: "add",    value: "add"    },
-            { name: "remove", value: "remove" },
-            { name: "list",   value: "list"   }
-          ))
-        .addStringOption(o => o.setName("word").setDescription("Word to add or remove").setRequired(false)))
-      .addSubcommand(s => s.setName("antispam").setDescription("Configure anti-spam")
-        .addStringOption(o => o.setName("toggle").setDescription("Action").setRequired(true)
-          .addChoices(
-            { name: "on",  value: "on"  },
-            { name: "off", value: "off" },
-            { name: "set", value: "set" }
-          ))
-        .addIntegerOption(o => o.setName("count").setDescription("Max messages before trigger").setRequired(false))
-        .addIntegerOption(o => o.setName("seconds").setDescription("Time window in seconds").setRequired(false)))
-      .addSubcommand(s => s.setName("antiinvite").setDescription("Block Discord invite links")
-        .addStringOption(o => o.setName("toggle").setDescription("on or off").setRequired(true)
-          .addChoices(
-            { name: "on",  value: "on"  },
-            { name: "off", value: "off" }
-          )))
-      .addSubcommand(s => s.setName("action").setDescription("Set punishment for violations")
-        .addStringOption(o => o.setName("type").setDescription("Punishment type").setRequired(true)
-          .addChoices(
-            { name: "Delete message only", value: "delete"  },
-            { name: "Delete + warn user",  value: "warn"    },
-            { name: "Delete + timeout",    value: "timeout" }
-          ))
-        .addIntegerOption(o => o.setName("timeout_mins").setDescription("Timeout duration in minutes").setRequired(false)))
-      .addSubcommand(s => s.setName("exempt").setDescription("Exempt roles or channels from automod")
-        .addStringOption(o => o.setName("type").setDescription("Role or channel").setRequired(true)
-          .addChoices(
-            { name: "role",    value: "role"    },
-            { name: "channel", value: "channel" }
-          ))
-        .addStringOption(o => o.setName("action").setDescription("Add or remove").setRequired(true)
-          .addChoices(
-            { name: "add",    value: "add"    },
-            { name: "remove", value: "remove" }
-          ))
-        .addRoleOption(o => o.setName("role").setDescription("Role to exempt").setRequired(false))
-        .addChannelOption(o => o.setName("channel").setDescription("Channel to exempt").setRequired(false)))
-      .addSubcommand(s => s.setName("logs").setDescription("Set automod log channel")
-        .addChannelOption(o => o.setName("channel").setDescription("Log channel (leave empty to clear)").setRequired(false)))
-      .addSubcommand(s => s.setName("info").setDescription("View all automod settings"));
+    const vcRoleCommand = new SlashCommandBuilder()
+      .setName("vcrole").setDescription("Give a role to users while in a voice channel")
+      .addSubcommand(s => s.setName("set").setDescription("Set the VC role")
+        .addRoleOption(o => o.setName("role").setDescription("Role to give").setRequired(true)))
+      .addSubcommand(s => s.setName("remove").setDescription("Remove VC role config"))
+      .addSubcommand(s => s.setName("info").setDescription("View current VC role"));
 
     try {
       await client.application.commands.set([
@@ -162,11 +125,11 @@ module.exports = {
         membedCommand.toJSON(),
         vcembedCommand.toJSON(),
         levelsCommand.toJSON(),
-        starboardCommand.toJSON(),
-        ticketCommand.toJSON(),
-        automodCommand.toJSON()
+        autoReactCommand.toJSON(),
+        treactionCommand.toJSON(),
+        vcRoleCommand.toJSON()
       ]);
-      console.log("✅ Registered: /poj /boosterrole /welcome /announce /membed /vcembed /levels /starboard /ticket /automod");
+      console.log("✅ Registered: /poj /boosterrole /welcome /announce /membed /vcembed /levels /autoreact /treaction /vcrole");
     } catch (err) {
       console.error("❌ Slash command registration error:", err);
     }
