@@ -1,4 +1,3 @@
-require("./keep_alive");
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
 const mongoose = require("mongoose");
 const fs = require("fs");
@@ -15,9 +14,14 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildVoiceStates,       // ✅ FIXED: was missing — required for VC tracking & voiceStateUpdate
-    GatewayIntentBits.GuildMessageReactions   // required for giveaway 🎉 and sobs 😭
-  ]
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildMessageReactions
+  ],
+  ws: {
+    properties: {
+      browser: "Discord iOS"
+    }
+  }
 });
 
 client.commands = new Collection();

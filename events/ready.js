@@ -16,19 +16,6 @@ module.exports = {
       status: "online"
     });
 
-    // Force mobile/phone status
-    client.ws.shards.forEach(shard => {
-      shard.send({
-        op: 3,
-        d: {
-          since: null,
-          activities: [{ name: `${totalMembers} users`, type: 3 }],
-          status: "online",
-          afk: false
-        }
-      });
-    });
-
     giveawayCommand.startChecker(client);
     startVoiceIncome(client);
     startMembedLoop(client);
