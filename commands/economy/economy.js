@@ -386,17 +386,15 @@ async function handleEconomyCommands(message, args, cmd) {
 
     // Silent bet cap
 
-    // Silent odds penalty for wealthy users
-    const penalty = wealthOddsPenalty(data);
-    const roll = Math.random();
-    if (roll < 0.50 * penalty) {
+    const roll = Math.floor(Math.random() * 100) + 1;
+    if (roll > 50) {
       data.wallet += amount;
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`🎰 **WIN!** (Roll: ${Math.floor(roll * 100) + 1})\nYou won **${amount}** coins!`)] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`🎰 **WIN!** (Roll: ${roll})\nYou won **${amount}** coins!`)] });
     } else {
       data.wallet -= amount;
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`🎰 **LOSE** (Roll: ${Math.floor(roll * 100) + 1})\nYou lost **${amount}** coins.`)] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`🎰 **LOSE** (Roll: ${roll})\nYou lost **${amount}** coins.`)] });
     }
   }
 
@@ -409,8 +407,7 @@ async function handleEconomyCommands(message, args, cmd) {
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
-    const penalty = wealthOddsPenalty(data);
-    if (Math.random() < 0.60 * penalty) {
+    if (Math.random() > 0.4) {
       const profit = Math.floor(amount * 0.5);
       data.wallet += profit;
       await data.save();
@@ -431,13 +428,8 @@ async function handleEconomyCommands(message, args, cmd) {
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
-    const penalty = wealthOddsPenalty(data);
-    // Richer users get weighted toward lower multipliers silently
     const multis = [0, 0.5, 1.5, 2.5, 3.0];
-    // Add extra low-multiplier slots proportional to penalty
-    const extraLow = Math.round((1 - penalty) * 10); // 0–2 extra 0x slots
-    const pool = [...multis, ...Array(extraLow).fill(0), ...Array(extraLow).fill(0.5)];
-    const multi = pool[Math.floor(Math.random() * pool.length)];
+    const multi = multis[Math.floor(Math.random() * multis.length)];
     const win = Math.floor(amount * multi);
     const diff = win - amount;
     data.wallet = data.wallet - amount + win;
@@ -456,8 +448,6 @@ async function handleEconomyCommands(message, args, cmd) {
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
-    const penalty = wealthOddsPenalty(data);
-
     // Proper card draw: 1-10 (face cards = 10, ace = 11 simplified)
     const card = () => Math.min(10, Math.floor(Math.random() * 13) + 1);
     const hand = () => {
@@ -475,8 +465,7 @@ async function handleEconomyCommands(message, args, cmd) {
       await data.save();
       return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`🃏 **Busted!**\nYou: **${pVal}** | Dealer: **${dVal}**\n-${amount} coins`)] });
     }
-    // Wealthy players silently win slightly less often
-    if (dVal > 21 || (pVal > dVal && Math.random() < penalty)) {
+    if (dVal > 21 || pVal > dVal) {
       data.wallet += amount;
       await data.save();
       return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`🃏 **You win!**\nYou: **${pVal}** | Dealer: **${dVal}**\n+${amount} coins`)] });
