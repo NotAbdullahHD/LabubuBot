@@ -58,3 +58,5 @@ for (const file of fs.readdirSync(eventsPath).filter(f => f.endsWith(".js"))) {
 }
 
 client.login(TOKEN);
+// Koyeb web service keep-alive
+require("./server");
