@@ -8,34 +8,40 @@ module.exports = {
   async execute(message) {
     const guildId = message.guild.id;
     const total = await FlagScore.countDocuments({ guildId });
+
     if (!total) {
-      return message.reply({ embeds: [new EmbedBuilder().setColor(0xFEE75C).setDescription("No flag scores yet! Start a game with `,flag`")] });
+      return message.reply({
+        embeds: [new EmbedBuilder()
+          .setColor(0xFFB6C1)
+          .setAuthor({ name: `${message.guild.name} — Flag Leaderboard`, iconURL: message.guild.iconURL() || undefined })
+          .setDescription("No scores yet. Start a game with `,flag`")
+        ]
+      });
     }
 
-    const pageSize = 10;
-    let page = 0;
+    const pageSize  = 10;
+    let   page      = 0;
     const totalPages = Math.ceil(total / pageSize);
 
     const getPage = async (p) => {
-      const entries = await FlagScore.find({ guildId })
-        .sort({ score: -1 })
-        .skip(p * pageSize)
-        .limit(pageSize);
-
-      const list = entries.map((e, i) =>
-        `${p * pageSize + i + 1}. ${e.username} — **${e.score}** points`
-      ).join("\n");
+      const entries = await FlagScore.find({ guildId }).sort({ score: -1 }).skip(p * pageSize).limit(pageSize);
+      const medals  = ["🥇", "🥈", "🥉"];
+      const list    = entries.map((e, i) => {
+        const rank  = p * pageSize + i + 1;
+        const badge = rank <= 3 ? medals[rank - 1] : `\`${rank}.\``;
+        return `${badge} ${e.username} — **${e.score}** pts`;
+      }).join("\n");
 
       return new EmbedBuilder()
-        .setTitle(",flags leaderboard")
-        .setDescription(`Top flag guessers in the server\n\n${list}`)
-        .setColor(0x2b2d31)
-        .setFooter({ text: `Page ${p + 1}/${totalPages}` });
+        .setColor(0xFFB6C1)
+        .setAuthor({ name: `${message.guild.name} — Flag Leaderboard`, iconURL: message.guild.iconURL() || undefined })
+        .setDescription(list)
+        .setFooter({ text: `Page ${p + 1} of ${totalPages}` });
     };
 
     const buildRow = (p, disabled = false) => new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("flb_prev").setEmoji("◀").setStyle(ButtonStyle.Secondary).setDisabled(disabled || p === 0),
-      new ButtonBuilder().setCustomId("flb_next").setEmoji("▶").setStyle(ButtonStyle.Secondary).setDisabled(disabled || p >= totalPages - 1)
+      new ButtonBuilder().setCustomId("flb_prev").setLabel("←").setStyle(ButtonStyle.Secondary).setDisabled(disabled || p === 0),
+      new ButtonBuilder().setCustomId("flb_next").setLabel("→").setStyle(ButtonStyle.Secondary).setDisabled(disabled || p >= totalPages - 1)
     );
 
     const msg = await message.reply({ embeds: [await getPage(page)], components: totalPages > 1 ? [buildRow(page)] : [] });

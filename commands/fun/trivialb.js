@@ -15,24 +15,32 @@ module.exports = {
       const entries = await TriviaScore.find({ guildId }).sort({ score: -1 }).skip(p * 10).limit(10);
       if (!entries.length) {
         return new EmbedBuilder()
-          .setTitle("🧠 Trivia Leaderboard")
-          .setDescription("No scores yet! Start a game with `,trivia`")
-          .setColor(0x5865F2);
+          .setColor(0xFFB6C1)
+          .setAuthor({ name: `${message.guild.name} — Trivia Leaderboard`, iconURL: message.guild.iconURL() || undefined })
+          .setDescription("No scores yet. Start a game with `,trivia`");
       }
-      const list = entries.map((e, i) => `${p * 10 + i + 1}. ${e.username} — **${e.score}** points`).join("\n");
+
+      const medals = ["🥇", "🥈", "🥉"];
+      const list = entries.map((e, i) => {
+        const rank  = p * 10 + i + 1;
+        const badge = rank <= 3 ? medals[rank - 1] : `\`${rank}.\``;
+        return `${badge} ${e.username} — **${e.score}** pts`;
+      }).join("\n");
+
       return new EmbedBuilder()
-        .setTitle("🧠 Trivia Leaderboard")
-        .setDescription(`Top trivia players in the server\n\n${list}`)
-        .setColor(0x5865F2)
-        .setFooter({ text: `Page ${p + 1}/${pages}` });
+        .setColor(0xFFB6C1)
+        .setAuthor({ name: `${message.guild.name} — Trivia Leaderboard`, iconURL: message.guild.iconURL() || undefined })
+        .setDescription(list)
+        .setFooter({ text: `Page ${p + 1} of ${pages}` });
     }
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("tlb_prev").setEmoji("◀").setStyle(ButtonStyle.Secondary).setDisabled(true),
-      new ButtonBuilder().setCustomId("tlb_next").setEmoji("▶").setStyle(ButtonStyle.Secondary).setDisabled(pages <= 1)
+      new ButtonBuilder().setCustomId("tlb_prev").setLabel("←").setStyle(ButtonStyle.Secondary).setDisabled(true),
+      new ButtonBuilder().setCustomId("tlb_next").setLabel("→").setStyle(ButtonStyle.Secondary).setDisabled(pages <= 1)
     );
 
-    const msg = await message.reply({ embeds: [await buildEmbed(0)], components: [row] });
+    const msg = await message.reply({ embeds: [await buildEmbed(0)], components: pages > 1 ? [row] : [] });
+    if (pages <= 1) return;
 
     const col = msg.createMessageComponentCollector({ filter: i => i.user.id === message.author.id, time: 60_000 });
 
@@ -41,10 +49,9 @@ module.exports = {
       if (interaction.customId === "tlb_next") page++;
 
       const updatedRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId("tlb_prev").setEmoji("◀").setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
-        new ButtonBuilder().setCustomId("tlb_next").setEmoji("▶").setStyle(ButtonStyle.Secondary).setDisabled(page >= pages - 1)
+        new ButtonBuilder().setCustomId("tlb_prev").setLabel("←").setStyle(ButtonStyle.Secondary).setDisabled(page === 0),
+        new ButtonBuilder().setCustomId("tlb_next").setLabel("→").setStyle(ButtonStyle.Secondary).setDisabled(page >= pages - 1)
       );
-
       await interaction.update({ embeds: [await buildEmbed(page)], components: [updatedRow] });
     });
 

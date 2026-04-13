@@ -1,52 +1,54 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require("discord.js");
 const { Family } = require("../../models/schemas");
 
+const ok   = (desc) => new EmbedBuilder().setColor(0x57F287).setDescription(desc);
+const fail = (desc) => new EmbedBuilder().setColor(0xED4245).setDescription(desc);
+const info = (desc) => new EmbedBuilder().setColor(0xFFB6C1).setDescription(desc);
+
 module.exports = {
   name: "family",
   async execute(message, args, client) {
-    const sub = args[0]?.toLowerCase();
-    const target = message.mentions.users.first();
+    const sub      = args[0]?.toLowerCase();
+    const target   = message.mentions.users.first();
     const authorId = message.author.id;
 
-    // Helper to get or create user data
     const getFamily = async (id) => {
       let data = await Family.findOne({ userId: id });
       if (!data) data = await Family.create({ userId: id });
       return data;
     };
 
-    // 1. MARRY
+    // ── MARRY ─────────────────────────────────────────────
     if (sub === "marry") {
-      if (!target) return message.reply("❌ Mention someone to marry.");
-      if (target.id === authorId) return message.reply("❌ You can't marry yourself.");
-      if (target.bot) return message.reply("❌ You can't marry a bot.");
+      if (!target)                  return message.reply({ embeds: [fail("Mention someone to marry.")] });
+      if (target.id === authorId)   return message.reply({ embeds: [fail("You can't marry yourself.")] });
+      if (target.bot)               return message.reply({ embeds: [fail("You can't marry a bot.")] });
 
       const authorData = await getFamily(authorId);
       const targetData = await getFamily(target.id);
 
-      if (authorData.partnerId) return message.reply("❌ You are already married.");
-      if (targetData.partnerId) return message.reply("❌ They are already married.");
+      if (authorData.partnerId) return message.reply({ embeds: [fail("You are already married.")] });
+      if (targetData.partnerId) return message.reply({ embeds: [fail("They are already married.")] });
 
-      // Proposal Buttons
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("accept").setLabel("Accept").setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId("deny").setLabel("Deny").setStyle(ButtonStyle.Danger)
+        new ButtonBuilder().setCustomId("deny").setLabel("Decline").setStyle(ButtonStyle.Danger)
       );
 
-      const embed = new EmbedBuilder()
-        .setTitle("💍 Marriage Proposal")
-        .setDescription(`${target}, do you accept ${message.author}'s proposal?`)
-        .setColor(0x2f3136);
-
-      const msg = await message.channel.send({ content: `${target}`, embeds: [embed], components: [row] });
-
-      const collector = msg.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        time: 30000
+      const msg = await message.channel.send({
+        content: `${target}`,
+        embeds: [new EmbedBuilder()
+          .setColor(0xFFB6C1)
+          .setAuthor({ name: `${message.author.username} sent a proposal`, iconURL: message.author.displayAvatarURL() })
+          .setDescription(`${target}, do you accept?`)
+        ],
+        components: [row]
       });
 
+      const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30_000 });
+
       collector.on("collect", async i => {
-        if (i.user.id !== target.id) return i.reply({ content: "Not for you!", ephemeral: true });
+        if (i.user.id !== target.id) return i.reply({ content: "This isn't for you.", ephemeral: true });
 
         if (i.customId === "accept") {
           authorData.partnerId = target.id;
@@ -54,24 +56,29 @@ module.exports = {
           await authorData.save();
           await targetData.save();
 
-          const successEmbed = new EmbedBuilder()
-            .setTitle("💍 Married!")
-            .setDescription(`${message.author} and ${target} are now married! ❤️`)
-            .setColor(0x57f287);
-
-          await i.update({ embeds: [successEmbed], components: [] });
+          await i.update({
+            embeds: [new EmbedBuilder()
+              .setColor(0x57F287)
+              .setDescription(`💍 **${message.author.username}** and **${target.username}** are now married!`)
+            ],
+            components: []
+          });
         } else {
-          await i.update({ content: "💔 Proposal Denied.", embeds: [], components: [] });
+          await i.update({ embeds: [fail(`**${target.username}** declined the proposal.`)], components: [] });
         }
+      });
+
+      collector.on("end", (_, reason) => {
+        if (reason === "time") msg.edit({ components: [] }).catch(() => {});
       });
     }
 
-    // 2. DIVORCE
+    // ── DIVORCE ───────────────────────────────────────────
     else if (sub === "divorce") {
       const authorData = await getFamily(authorId);
-      if (!authorData.partnerId) return message.reply("❌ You are single.");
+      if (!authorData.partnerId) return message.reply({ embeds: [fail("You are not married.")] });
 
-      const partnerId = authorData.partnerId;
+      const partnerId   = authorData.partnerId;
       const partnerData = await getFamily(partnerId);
 
       authorData.partnerId = null;
@@ -79,39 +86,43 @@ module.exports = {
       await authorData.save();
       await partnerData.save();
 
-      message.reply(`💔 You divorced <@${partnerId}>.`);
+      message.reply({ embeds: [new EmbedBuilder()
+        .setColor(0xED4245)
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+        .setDescription(`💔 You divorced <@${partnerId}>.`)
+      ]});
     }
 
-    // 3. ADOPT
+    // ── ADOPT ─────────────────────────────────────────────
     else if (sub === "adopt") {
-      if (!target) return message.reply("❌ Mention someone to adopt.");
-      if (target.id === authorId) return message.reply("❌ You can't adopt yourself.");
+      if (!target)                return message.reply({ embeds: [fail("Mention someone to adopt.")] });
+      if (target.id === authorId) return message.reply({ embeds: [fail("You can't adopt yourself.")] });
 
       const authorData = await getFamily(authorId);
-      // Optional: Require marriage to adopt?
-      // if (!authorData.partnerId) return message.reply("❌ You must be married to adopt.");
-
-      if (authorData.children.includes(target.id)) return message.reply("❌ Already your child.");
+      if (authorData.children.includes(target.id)) return message.reply({ embeds: [fail("They are already your child.")] });
 
       const childData = await getFamily(target.id);
-      if (childData.parent) return message.reply("❌ They already have a parent.");
+      if (childData.parent) return message.reply({ embeds: [fail("They already have a parent.")] });
 
-      // Proposal to child (they must accept adoption)
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId("accept").setLabel("Join Family").setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId("deny").setLabel("No thanks").setStyle(ButtonStyle.Danger)
       );
 
-      const msg = await message.channel.send({ 
+      const msg = await message.channel.send({
         content: `${target}`,
-        embeds: [new EmbedBuilder().setDescription(`${message.author} wants to adopt you!`).setColor(0x2f3136)],
-        components: [row] 
+        embeds: [new EmbedBuilder()
+          .setColor(0xFFB6C1)
+          .setAuthor({ name: `${message.author.username} wants to adopt you`, iconURL: message.author.displayAvatarURL() })
+          .setDescription(`${target}, do you accept?`)
+        ],
+        components: [row]
       });
 
-      const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+      const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30_000 });
 
       collector.on("collect", async i => {
-        if (i.user.id !== target.id) return i.reply({ content: "Not for you!", ephemeral: true });
+        if (i.user.id !== target.id) return i.reply({ content: "This isn't for you.", ephemeral: true });
 
         if (i.customId === "accept") {
           authorData.children.push(target.id);
@@ -119,7 +130,6 @@ module.exports = {
           await authorData.save();
           await childData.save();
 
-          // If married, add child to partner too
           if (authorData.partnerId) {
             const partnerData = await getFamily(authorData.partnerId);
             if (!partnerData.children.includes(target.id)) {
@@ -128,52 +138,69 @@ module.exports = {
             }
           }
 
-          await i.update({ embeds: [new EmbedBuilder().setDescription(`👶 ${target} is now your child!`).setColor(0x57f287)], components: [] });
+          await i.update({
+            embeds: [ok(`👶 **${target.username}** joined your family!`)],
+            components: []
+          });
         } else {
-          await i.update({ content: "Adoption declined.", embeds: [], components: [] });
+          await i.update({ embeds: [fail(`**${target.username}** declined.`)], components: [] });
         }
+      });
+
+      collector.on("end", (_, reason) => {
+        if (reason === "time") msg.edit({ components: [] }).catch(() => {});
       });
     }
 
-    // 4. TREE (Status)
+    // ── TREE ──────────────────────────────────────────────
     else if (sub === "tree" || sub === "stats") {
       const user = target || message.author;
       const data = await getFamily(user.id);
 
-      const partner = data.partnerId ? `<@${data.partnerId}>` : "None";
-      const children = data.children.length > 0 ? data.children.map(id => `<@${id}>`).join(", ") : "None";
-      const parent = data.parent ? `<@${data.parent}>` : "None";
+      const partner  = data.partnerId         ? `<@${data.partnerId}>` : "None";
+      const parent   = data.parent            ? `<@${data.parent}>`    : "None";
+      const children = data.children.length   ? data.children.map(id => `<@${id}>`).join(", ") : "None";
 
-      const embed = new EmbedBuilder()
-        .setTitle(`🌳 ${user.username}'s Family Tree`)
-        .setDescription(`**Partner:** ${partner}\n**Parent:** ${parent}\n**Children:**\n${children}`)
-        .setColor(0x2f3136)
-        .setThumbnail(user.displayAvatarURL());
-
-      message.reply({ embeds: [embed] });
+      message.reply({ embeds: [new EmbedBuilder()
+        .setColor(0xFFB6C1)
+        .setAuthor({ name: `${user.username}'s Family`, iconURL: user.displayAvatarURL() })
+        .addFields(
+          { name: "💍 Partner",  value: partner,  inline: true },
+          { name: "👤 Parent",   value: parent,   inline: true },
+          { name: "👶 Children", value: children, inline: false }
+        )
+      ]});
     }
 
-    // 5. DISOWN
+    // ── DISOWN ────────────────────────────────────────────
     else if (sub === "disown") {
-        if (!target) return message.reply("❌ Mention a child to disown.");
-        const authorData = await getFamily(authorId);
+      if (!target) return message.reply({ embeds: [fail("Mention a child to disown.")] });
 
-        if (!authorData.children.includes(target.id)) return message.reply("❌ They are not your child.");
+      const authorData = await getFamily(authorId);
+      if (!authorData.children.includes(target.id)) return message.reply({ embeds: [fail("They are not your child.")] });
 
-        // Remove from author
-        authorData.children = authorData.children.filter(c => c !== target.id);
-        await authorData.save();
+      authorData.children = authorData.children.filter(c => c !== target.id);
+      await authorData.save();
 
-        // Remove parent link from child
-        const childData = await getFamily(target.id);
-        childData.parent = null;
-        await childData.save();
+      if (authorData.partnerId) {
+        const partnerData = await getFamily(authorData.partnerId);
+        partnerData.children = partnerData.children.filter(c => c !== target.id);
+        await partnerData.save();
+      }
 
-        message.reply(`🚪 You have disowned **${target.username}**.`);
+      const childData = await getFamily(target.id);
+      childData.parent = null;
+      await childData.save();
+
+      message.reply({ embeds: [new EmbedBuilder()
+        .setColor(0xED4245)
+        .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+        .setDescription(`🚪 **${target.username}** is no longer part of your family.`)
+      ]});
     }
 
     else {
-      message.reply("Usage: `>family marry @user`, `>family divorce`, `>family adopt @user`, `>family tree`, `>family disown @user`");
+      message.reply({ embeds: [info(`**Family Commands**\n\`family marry @user\` — propose\n\`family divorce\` — end marriage\n\`family adopt @user\` — adopt\n\`family tree\` — view family\n\`family disown @user\` — remove child`)] });
     }
   }
 };

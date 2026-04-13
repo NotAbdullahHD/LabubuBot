@@ -1,38 +1,37 @@
 const { EmbedBuilder } = require("discord.js");
 const { Family } = require("../../models/schemas");
 
+const fail = (desc) => new EmbedBuilder().setColor(0xED4245).setDescription(desc);
+
 module.exports = {
   name: "disown",
   async execute(message, args, client) {
     const target = message.mentions.users.first();
-    const createEmbed = (title, desc, color) => new EmbedBuilder().setTitle(title).setDescription(desc).setColor(color).setFooter({ text: "Family System" });
 
-    if (!target) return message.reply({ embeds: [createEmbed("Error", "Mention a valid child.", 0xed4245)] });
+    if (!target) return message.reply({ embeds: [fail("Mention a child to disown.")] });
 
-    let authorData = await Family.findOne({ userId: message.author.id });
-    if (!authorData || !authorData.children.includes(target.id)) 
-      return message.reply({ embeds: [createEmbed("Error", "That user is not your child.", 0xed4245)] });
+    const authorData = await Family.findOne({ userId: message.author.id });
+    if (!authorData || !authorData.children.includes(target.id))
+      return message.reply({ embeds: [fail("That user is not your child.")] });
 
-    // Remove from Author
     authorData.children = authorData.children.filter(id => id !== target.id);
     await authorData.save();
 
-    // Remove from Partner (if any)
     if (authorData.partnerId) {
-      let partnerData = await Family.findOne({ userId: authorData.partnerId });
+      const partnerData = await Family.findOne({ userId: authorData.partnerId });
       if (partnerData) {
         partnerData.children = partnerData.children.filter(id => id !== target.id);
         await partnerData.save();
       }
     }
 
-    // Update Child
-    let childData = await Family.findOne({ userId: target.id });
-    if (childData) {
-      childData.parent = null;
-      await childData.save();
-    }
+    const childData = await Family.findOne({ userId: target.id });
+    if (childData) { childData.parent = null; await childData.save(); }
 
-    message.reply({ embeds: [createEmbed("🚪 Disowned", `${target} is no longer part of the family.`, 0xffa500)] });
+    message.reply({ embeds: [new EmbedBuilder()
+      .setColor(0xED4245)
+      .setAuthor({ name: message.author.username, iconURL: message.author.displayAvatarURL() })
+      .setDescription(`🚪 **${target.username}** is no longer part of your family.`)
+    ]});
   }
 };

@@ -1,21 +1,24 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require("discord.js");
 const { Family } = require("../../models/schemas");
 
+const ok   = (desc) => new EmbedBuilder().setColor(0x57F287).setDescription(desc);
+const fail = (desc) => new EmbedBuilder().setColor(0xED4245).setDescription(desc);
+
 module.exports = {
   name: "adopt",
   async execute(message, args, client) {
     const target = message.mentions.users.first();
-    const createEmbed = (title, desc, color) => new EmbedBuilder().setTitle(title).setDescription(desc).setColor(color).setFooter({ text: "Family System" });
 
-    if (!target) return message.reply({ embeds: [createEmbed("Error", "Mention a valid user.", 0xed4245)] });
-    if (target.id === message.author.id) return message.reply({ embeds: [createEmbed("Error", "You can't adopt yourself.", 0xed4245)] });
+    if (!target)                         return message.reply({ embeds: [fail("Mention someone to adopt.")] });
+    if (target.id === message.author.id) return message.reply({ embeds: [fail("You can't adopt yourself.")] });
 
     let authorData = await Family.findOne({ userId: message.author.id }) || await Family.create({ userId: message.author.id });
-    if (!authorData.partnerId) return message.reply({ embeds: [createEmbed("Error", "You must be married to adopt.", 0xed4245)] });
+    if (!authorData.partnerId)           return message.reply({ embeds: [fail("You must be married to adopt.")] });
+    if (authorData.children.includes(target.id)) return message.reply({ embeds: [fail("They are already your child.")] });
 
-    if (authorData.children.includes(target.id)) return message.reply({ embeds: [createEmbed("Error", "Already your child.", 0xed4245)] });
+    const childData = await Family.findOne({ userId: target.id }) || await Family.create({ userId: target.id });
+    if (childData.parent)                return message.reply({ embeds: [fail("They already have a parent.")] });
 
-    // Send Request
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("accept").setLabel("Join Family").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("deny").setLabel("No thanks").setStyle(ButtonStyle.Danger)
@@ -23,37 +26,39 @@ module.exports = {
 
     const msg = await message.channel.send({
       content: `${target}`,
-      embeds: [createEmbed("👶 Adoption Request", `${message.author} wants to adopt you!`, 0x2f3136)],
+      embeds: [new EmbedBuilder()
+        .setColor(0xFFB6C1)
+        .setAuthor({ name: `${message.author.username} wants to adopt you`, iconURL: message.author.displayAvatarURL() })
+        .setDescription(`${target}, do you accept?`)
+      ],
       components: [row]
     });
 
-    const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
+    const collector = msg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30_000 });
 
     collector.on("collect", async i => {
-      if (i.user.id !== target.id) return i.reply({ content: "Not for you!", ephemeral: true });
+      if (i.user.id !== target.id) return i.reply({ content: "This isn't for you.", ephemeral: true });
 
       if (i.customId === "accept") {
-        let childData = await Family.findOne({ userId: target.id }) || await Family.create({ userId: target.id });
-
-        // Add to author
         authorData.children.push(target.id);
+        childData.parent = message.author.id;
         await authorData.save();
+        await childData.save();
 
-        // Add to partner
-        let partnerData = await Family.findOne({ userId: authorData.partnerId });
-        if (partnerData) {
+        const partnerData = await Family.findOne({ userId: authorData.partnerId });
+        if (partnerData && !partnerData.children.includes(target.id)) {
           partnerData.children.push(target.id);
           await partnerData.save();
         }
 
-        // Set parent
-        childData.parent = message.author.id;
-        await childData.save();
-
-        i.update({ embeds: [createEmbed("👶 Adoption Complete", `${target} has joined your family!`, 0x57f287)], components: [] });
+        await i.update({ embeds: [ok(`👶 **${target.username}** joined your family!`)], components: [] });
       } else {
-        i.update({ embeds: [createEmbed("❌ Adoption Denied", "They declined.", 0xed4245)], components: [] });
+        await i.update({ embeds: [fail(`**${target.username}** declined.`)], components: [] });
       }
+    });
+
+    collector.on("end", (_, reason) => {
+      if (reason === "time") msg.edit({ components: [] }).catch(() => {});
     });
   }
 };
