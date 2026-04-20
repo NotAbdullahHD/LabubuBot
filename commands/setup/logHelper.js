@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
-const { LogConfig } = require("../models/schemas");
+const { LogConfig } = require("../../models/schemas");
 
 async function sendLog(guild, type, embed) {
   try {
