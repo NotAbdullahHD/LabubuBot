@@ -9,10 +9,10 @@ module.exports = {
   once: true,
   async execute(client) {
     console.log(`✅ Logged in as ${client.user.tag}`);
-
+ 
     const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
     client.user.setPresence({
-      activities: [{ name: `${totalMembers} users`, type: ActivityType.Watching }],
+      activities: [{ name: `,help`, type: ActivityType.Streaming, url: "https://www.twitch.tv/discord" }],
       status: "online"
     });
 
@@ -78,6 +78,32 @@ module.exports = {
         .addUserOption(o => o.setName("user").setDescription("User to reset").setRequired(true)))
       .addSubcommand(s => s.setName("info").setDescription("View current leveling settings"));
 
+    const logsCommand = new SlashCommandBuilder()
+      .setName("logs").setDescription("Configure server logging")
+      .addSubcommand(s => s.setName("set").setDescription("Set a log channel")
+        .addStringOption(o => o.setName("type").setDescription("Log type").setRequired(true)
+          .addChoices(
+            { name: "default (all logs)", value: "default" },
+            { name: "member (join/leave)", value: "member" },
+            { name: "message (delete/edit)", value: "message" },
+            { name: "moderation (ban/kick)", value: "moderation" },
+            { name: "voice (vc activity)", value: "voice" },
+            { name: "role (role/nickname)", value: "role" }
+          ))
+        .addChannelOption(o => o.setName("channel").setDescription("Channel to send logs to").setRequired(true)))
+      .addSubcommand(s => s.setName("disable").setDescription("Disable a log type")
+        .addStringOption(o => o.setName("type").setDescription("Log type to disable").setRequired(true)
+          .addChoices(
+            { name: "default", value: "default" },
+            { name: "member", value: "member" },
+            { name: "message", value: "message" },
+            { name: "moderation", value: "moderation" },
+            { name: "voice", value: "voice" },
+            { name: "role", value: "role" }
+          )))
+      .addSubcommand(s => s.setName("view").setDescription("View current log channels"))
+      .addSubcommand(s => s.setName("reset").setDescription("Clear all log channels"));
+
     const autoReactCommand = new SlashCommandBuilder()
       .setName("autoreact").setDescription("Auto react to every message in a channel")
       .addSubcommand(s => s.setName("set").setDescription("Set auto react for a channel")
@@ -112,11 +138,12 @@ module.exports = {
         membedCommand.toJSON(),
         vcembedCommand.toJSON(),
         levelsCommand.toJSON(),
+        logsCommand.toJSON(),
         autoReactCommand.toJSON(),
         treactionCommand.toJSON(),
         vcRoleCommand.toJSON()
       ]);
-      console.log("✅ Registered: /poj /boosterrole /welcome /announce /membed /vcembed /levels /autoreact /treaction /vcrole");
+      console.log("✅ Registered: /poj /boosterrole /welcome /announce /membed /vcembed /levels /autoreact /treaction /vcrole /logs");
     } catch (err) {
       console.error("❌ Slash command registration error:", err);
     }

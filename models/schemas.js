@@ -232,6 +232,17 @@ const vcRoleSchema = new mongoose.Schema({
   roleId:  { type: String, required: true }
 });
 
+// 24. LOG CONFIG — channels for different log types
+const logConfigSchema = new mongoose.Schema({
+  guildId:    { type: String, required: true, unique: true },
+  default:    { type: String, default: null }, // fallback channel
+  member:     { type: String, default: null }, // join/leave
+  message:    { type: String, default: null }, // delete/edit
+  moderation: { type: String, default: null }, // ban/kick/warn
+  voice:      { type: String, default: null }, // vc join/leave
+  role:       { type: String, default: null }, // role/nickname changes
+});
+
 module.exports = {
   User:            mongoose.model("User",            userSchema),
   Family:          mongoose.model("Family",          familySchema),
@@ -253,6 +264,7 @@ module.exports = {
   FlagScore:       mongoose.model("FlagScore",       flagScoreSchema),
   TriviaScore:     mongoose.model("TriviaScore",     triviaScoreSchema),
   ShopItem:        mongoose.model("ShopItem",        shopItemSchema),
+  LogConfig:       mongoose.model("LogConfig",       logConfigSchema),
   AutoReact:       mongoose.model("AutoReact",       autoReactSchema),
   TriggerReact:    mongoose.model("TriggerReact",    triggerReactSchema),
   VcRole:          mongoose.model("VcRole",          vcRoleSchema)
