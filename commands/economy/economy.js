@@ -2,12 +2,11 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags
 const { EcoUser } = require('../../models/schemas');
 
 const C = {
-  MAIN:    0xFFB6C1,
-  GREEN:   0x57F287,
-  RED:     0xED4245,
-  GOLD:    0xFEE75C,
-  BLUE:    0x5865F2,
-  WELCOME: 0xFFB6C1
+  MAIN: 0x2b2d31,
+  GREEN: 0x43b581,
+  RED: 0xf04747,
+  GOLD: 0xffac33,
+  WELCOME: 7208536
 };
 
 // ============================================================
@@ -114,7 +113,7 @@ async function handleIncomeEvents(message) {
 
   await EcoUser.findOneAndUpdate(
     { userId: message.author.id },
-    { $inc: { wallet: 20 } },
+    { $inc: { wallet: 5 } },
     { upsert: true }
   );
 
@@ -123,7 +122,7 @@ async function handleIncomeEvents(message) {
     if (!target.bot && target.id !== message.author.id) {
       await EcoUser.findOneAndUpdate(
         { userId: target.id },
-        { $inc: { wallet: 40 } },
+        { $inc: { wallet: 15 } },
         { upsert: true }
       );
     }
@@ -143,12 +142,12 @@ async function handleReactionIncome(reaction, user) {
     try { await reaction.message.fetch(); } catch { return; }
   }
 
-  await EcoUser.findOneAndUpdate({ userId: user.id }, { $inc: { wallet: 10 } }, { upsert: true });
+  await EcoUser.findOneAndUpdate({ userId: user.id }, { $inc: { wallet: 3 } }, { upsert: true });
 
   if (reaction.message.author && !reaction.message.author.bot && reaction.message.author.id !== user.id) {
     await EcoUser.findOneAndUpdate(
       { userId: reaction.message.author.id },
-      { $inc: { wallet: 5 } },
+      { $inc: { wallet: 2 } },
       { upsert: true }
     );
   }
@@ -172,7 +171,7 @@ function startVoiceIncome(client) {
         ) {
           await EcoUser.findOneAndUpdate(
             { userId: member.id },
-            { $inc: { wallet: 120 } },
+            { $inc: { wallet: 50 } },
             { upsert: true }
           ).catch(() => {});
         }
@@ -265,22 +264,13 @@ async function handleEconomyCommands(message, args, cmd) {
       const min = Math.ceil((data.lastWork + cooldown - now) / 60000);
       return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`⏳ You're tired! Work again in **${min} minute(s)**.`)] });
     }
-    const jobs = [{title:'Coder',emoji:'💻'},{title:'Burger Flipper',emoji:'🍔'},{title:'Server Mod',emoji:'🛡️'},{title:'Taxi Driver',emoji:'🚕'},{title:'Chef',emoji:'👨‍🍳'},{title:'Streamer',emoji:'🎥'},{title:'Trader',emoji:'📈'},{title:'DJ',emoji:'🎧'},{title:'Artist',emoji:'🎨'}];
+    const jobs = ['Coder', 'Burger Flipper', 'Server Mod', 'Taxi Driver', 'Chef', 'Streamer', 'Trader'];
     const job = jobs[Math.floor(Math.random() * jobs.length)];
-    const earn = Math.floor(Math.random() * 150) + 50;
+    const earn = Math.floor(Math.random() * 50) + 30;
     data.wallet += earn;
     data.lastWork = now;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder()
-      .setColor(C.GREEN)
-      .setAuthor({ name: `${user.username} worked!`, iconURL: avatar })
-      .setDescription(`${job.emoji} You worked as a **${job.title}**`)
-      .addFields(
-        { name: '💰 Earned', value: `**${earn}** coins`, inline: true },
-        { name: '👛 New Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-      )
-      .setFooter({ text: 'Come back in 1 hour to work again' })
-    ] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`🔨 Worked as **${job}** and earned **${earn}** coins.`)] });
   }
 
   // ----------------------------------------------------------
@@ -293,19 +283,10 @@ async function handleEconomyCommands(message, args, cmd) {
       const hrs = Math.ceil((data.lastDaily + cooldown - now) / 3600000);
       return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`⏳ Come back in **${hrs} hour(s)**.`)] });
     }
-    data.wallet += 500;
+    data.wallet += 250;
     data.lastDaily = now;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder()
-      .setColor(C.GREEN)
-      .setAuthor({ name: `${user.username}'s Daily Reward`, iconURL: avatar })
-      .setDescription('🎁 You claimed your daily reward!')
-      .addFields(
-        { name: '💰 Received', value: '**500** coins', inline: true },
-        { name: '👛 New Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-      )
-      .setFooter({ text: 'Come back tomorrow for another reward' })
-    ] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription('✅ Claimed **500** daily coins!')] });
   }
 
   // ----------------------------------------------------------
@@ -314,18 +295,15 @@ async function handleEconomyCommands(message, args, cmd) {
   if (cmd === 'bal' || cmd === 'balance') {
     const target = message.mentions.users.first() || user;
     const tData = await getEcoUser(target.id);
-    const total = tData.wallet + tData.bank;
     return message.reply({
       embeds: [new EmbedBuilder()
         .setColor(C.MAIN)
         .setAuthor({ name: `${target.username}'s Balance`, iconURL: target.displayAvatarURL() })
-        .addFields(
-          { name: '👛 Wallet',  value: `**${tData.wallet.toLocaleString()}** coins`, inline: true },
-          { name: '🏦 Bank',    value: `**${tData.bank.toLocaleString()}** coins`,   inline: true },
-          { name: '📈 Total',   value: `**${total.toLocaleString()}** coins`,        inline: true }
-        )
-        .setFooter({ text: 'Use ,dep to save coins in your bank' })
-      ]
+        .setDescription(
+          `👛 **Wallet:** ${tData.wallet.toLocaleString()} coins\n` +
+          `🏦 **Bank:** ${tData.bank.toLocaleString()} coins\n` +
+          `📈 **Total:** ${(tData.wallet + tData.bank).toLocaleString()} coins`
+        )]
     });
   }
 
@@ -339,14 +317,7 @@ async function handleEconomyCommands(message, args, cmd) {
     data.wallet -= amount;
     data.bank += amount;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder()
-      .setColor(C.GREEN)
-      .setAuthor({ name: `${user.username} deposited coins`, iconURL: avatar })
-      .addFields(
-        { name: '🏦 Deposited', value: `**${amount.toLocaleString()}** coins`, inline: true },
-        { name: '🏦 Bank Balance', value: `**${data.bank.toLocaleString()}** coins`, inline: true }
-      )
-    ] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`✅ Deposited **${amount.toLocaleString()}** coins into your bank.`)] });
   }
 
   // ----------------------------------------------------------
@@ -359,14 +330,7 @@ async function handleEconomyCommands(message, args, cmd) {
     data.bank -= amount;
     data.wallet += amount;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder()
-      .setColor(C.GREEN)
-      .setAuthor({ name: `${user.username} withdrew coins`, iconURL: avatar })
-      .addFields(
-        { name: '👛 Withdrawn', value: `**${amount.toLocaleString()}** coins`, inline: true },
-        { name: '👛 Wallet Balance', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-      )
-    ] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`✅ Withdrew **${amount.toLocaleString()}** coins to your wallet.`)] });
   }
 
   // ----------------------------------------------------------
@@ -384,15 +348,7 @@ async function handleEconomyCommands(message, args, cmd) {
     tData.wallet += amount;
     await data.save();
     await tData.save();
-    return message.reply({ embeds: [new EmbedBuilder()
-      .setColor(C.GREEN)
-      .setAuthor({ name: `${user.username} sent coins`, iconURL: avatar })
-      .setDescription(`💸 You sent coins to **${target.username}**!`)
-      .addFields(
-        { name: '💰 Amount', value: `**${amount.toLocaleString()}** coins`, inline: true },
-        { name: '👛 Your Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-      )
-    ] });
+    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`🎁 Sent **${amount.toLocaleString()}** coins to **${target.username}**.`)] });
   }
 
   // ----------------------------------------------------------
@@ -411,28 +367,12 @@ async function handleEconomyCommands(message, args, cmd) {
       data.wallet += stolen;
       await tData.save();
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder()
-        .setColor(C.GREEN)
-        .setAuthor({ name: `${user.username} robbed someone!`, iconURL: avatar })
-        .setDescription(`😈 You successfully robbed **${target.username}**!`)
-        .addFields(
-          { name: '💰 Stolen', value: `**${stolen.toLocaleString()}** coins`, inline: true },
-          { name: '👛 Your Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-        )
-      ] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`😈 You robbed **${stolen}** coins from **${target.username}**!`)] });
     } else {
       const fine = Math.min(200, data.wallet);
       data.wallet = Math.max(0, data.wallet - 200);
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder()
-        .setColor(C.RED)
-        .setAuthor({ name: `${user.username} got caught!`, iconURL: avatar })
-        .setDescription(`👮 You got caught trying to rob **${target.username}**!`)
-        .addFields(
-          { name: '💸 Fine Paid', value: `**${fine.toLocaleString()}** coins`, inline: true },
-          { name: '👛 Your Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-        )
-      ] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`👮 Caught! You paid a **${fine}** coin fine.`)] });
     }
   }
 
@@ -471,27 +411,11 @@ async function handleEconomyCommands(message, args, cmd) {
       const profit = Math.floor(amount * 0.5);
       data.wallet += profit;
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder()
-        .setColor(C.GREEN)
-        .setAuthor({ name: `${user.username} played mines`, iconURL: avatar })
-        .setDescription('💎 **Safe! No mines found!**')
-        .addFields(
-          { name: '💰 Profit', value: `**+${profit.toLocaleString()}** coins`, inline: true },
-          { name: '👛 Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-        )
-      ] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`💎 **Safe!** Kept your **${amount}** coins and earned **${profit}** extra!`)] });
     } else {
       data.wallet -= amount;
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder()
-        .setColor(C.RED)
-        .setAuthor({ name: `${user.username} played mines`, iconURL: avatar })
-        .setDescription('💥 **BOOM! You hit a mine!**')
-        .addFields(
-          { name: '💸 Lost', value: `**${amount.toLocaleString()}** coins`, inline: true },
-          { name: '👛 Wallet', value: `**${data.wallet.toLocaleString()}** coins`, inline: true }
-        )
-      ] });
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`💥 **BOOM!** You lost **${amount}** coins.`)] });
     }
   }
 
