@@ -243,6 +243,13 @@ const logConfigSchema = new mongoose.Schema({
   role:       { type: String, default: null }, // role/nickname changes
 });
 
+// 25. PET — user pet with special ability
+const petSchema = new mongoose.Schema({
+  userId:    { type: String, required: true, unique: true },
+  type:      { type: String, enum: ["cat", "dog", "bunny"], required: true },
+  adoptedAt: { type: Number, default: Date.now }
+});
+
 module.exports = {
   User:            mongoose.model("User",            userSchema),
   Family:          mongoose.model("Family",          familySchema),
@@ -265,6 +272,7 @@ module.exports = {
   TriviaScore:     mongoose.model("TriviaScore",     triviaScoreSchema),
   ShopItem:        mongoose.model("ShopItem",        shopItemSchema),
   LogConfig:       mongoose.model("LogConfig",       logConfigSchema),
+  Pet:             mongoose.model("Pet",             petSchema),
   AutoReact:       mongoose.model("AutoReact",       autoReactSchema),
   TriggerReact:    mongoose.model("TriggerReact",    triggerReactSchema),
   VcRole:          mongoose.model("VcRole",          vcRoleSchema)
