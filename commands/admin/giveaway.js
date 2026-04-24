@@ -86,7 +86,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setTitle(prize)
         .setDescription(`React with 🎉 to enter!\n\n**Ends:** <t:${Math.floor(endTime / 1000)}:R>\n**Hosted by:** ${message.author}\n**Winners:** ${winnerCount}`)
-        .setColor(0xFFAC33)
+        .setColor(000000)
         .setFooter({ text: "Ends at" })
         .setTimestamp(endTime);
 

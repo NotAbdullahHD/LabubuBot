@@ -8,11 +8,11 @@ module.exports = {
     const err = (msg) => message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription(msg)] });
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
-      return err("❌ You need **Manage Channels** permission.");
+      return err("<:warning:1497240331756769280> You need **Manage Channels** permission.");
 
     const seconds = parseInt(args[0]);
     if (isNaN(seconds) || seconds < 0 || seconds > 21600)
-      return err("❌ Usage: `,slowmode <0-21600>`\n`0` disables slowmode. Max is `21600` (6 hours).");
+      return err("<:warning:1497240331756769280> Usage: `,slowmode <0-21600>`\n`0` disables slowmode. Max is `21600` (6 hours).");
 
     await message.channel.setRateLimitPerUser(seconds);
 

@@ -7,7 +7,7 @@ module.exports = {
     const successEmbed = (msg) => new EmbedBuilder().setDescription(msg).setColor(0x57F287);
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) 
-      return message.reply({ embeds: [errorEmbed("❌ Missing **Manage Messages** permission.")] });
+      return message.reply({ embeds: [errorEmbed("<:warning:1497240331756769280> Missing **Manage Messages** permission.")] });
 
     const amount = parseInt(args[0]);
     if (!amount || amount < 1 || amount > 100) 

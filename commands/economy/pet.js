@@ -4,21 +4,21 @@ const { Pet } = require("../../models/schemas");
 const PETS = [
   {
     type:    "cat",
-    emoji:   "🐱",
+    emoji:   "<:cat:1497205750387445810>",
     name:    "Cat",
     ability: "Gives +30% bonus coins when you work",
     rarity:  "Common"
   },
   {
     type:    "dog",
-    emoji:   "🐶",
+    emoji:   "<:dog:1497205767110000690>",
     name:    "Dog",
     ability: "Protects you from being robbed",
     rarity:  "Uncommon"
   },
   {
     type:    "bunny",
-    emoji:   "🐰",
+    emoji:   "<:bunny:1497205798215090226>",
     name:    "Bunny",
     ability: "Reduces daily cooldown by 4 hours",
     rarity:  "Rare"
@@ -62,7 +62,7 @@ module.exports = {
       const existing = await Pet.findOne({ userId: user.id });
       if (existing) {
         const petData = PETS.find(p => p.type === existing.type);
-        return message.reply(`❌ You already have a **${petData.emoji} ${petData.name}**! You can only have one pet.`);
+        return message.reply(`<:x_decline:1497240273116336332> You already have a **${petData.emoji} ${petData.name}**! You can only have one pet.`);
       }
 
       // Random weighted: cat 50%, dog 30%, bunny 20%
@@ -86,6 +86,6 @@ module.exports = {
       ]});
     }
 
-    return message.reply('❌ Usage: `,pet` or `,pet get`');
+    return message.reply('<:x_decline:1497240273116336332> Usage: `,pet` or `,pet get`');
   }
 };
