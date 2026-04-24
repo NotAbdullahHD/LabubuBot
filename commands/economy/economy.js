@@ -407,15 +407,15 @@ async function handleEconomyCommands(message, args, cmd) {
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
-    if (Math.random() < 0.70) {
-      const profit = Math.floor(amount * 0.20);
+    if (Math.random() > 0.4) {
+      const profit = Math.floor(amount * 0.5);
       data.wallet += profit;
       await data.save();
-      return message.reply(`💎 Safe! +**${profit.toLocaleString()}** coins earned.`);
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`💎 **Safe!** Kept your **${amount}** coins and earned **${profit}** extra!`)] });
     } else {
       data.wallet -= amount;
       await data.save();
-      return message.reply(`💥 BOOM! Lost **${amount.toLocaleString()}** coins.`);
+      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`💥 **BOOM!** You lost **${amount}** coins.`)] });
     }
   }
 
@@ -428,27 +428,15 @@ async function handleEconomyCommands(message, args, cmd) {
     if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
-    // Weighted: 0x(20%) 0.5x(30%) 1x(25%) 1.5x(15%) 2x(10%)
-    const roll = Math.random();
-    let multi;
-    if      (roll < 0.20) multi = 0;
-    else if (roll < 0.50) multi = 0.5;
-    else if (roll < 0.75) multi = 1.0;
-    else if (roll < 0.90) multi = 1.5;
-    else                  multi = 2.0;
-
-    const win  = Math.floor(amount * multi);
+    const multis = [0, 0.5, 1.5, 2.5, 3.0];
+    const multi = multis[Math.floor(Math.random() * multis.length)];
+    const win = Math.floor(amount * multi);
     const diff = win - amount;
     data.wallet = data.wallet - amount + win;
     await data.save();
 
-    const sign  = diff >= 0 ? '+' : '';
-    const color = multi === 0 ? C.RED : multi >= 1 ? C.GREEN : 0xFEE75C;
-    const label = multi === 0 ? '💀 0x — Lost everything' : `🎯 ${multi}x Multiplier`;
-    return message.reply({ embeds: [new EmbedBuilder()
-      .setColor(color)
-      .setDescription(`${label}\n${sign}**${Math.abs(diff).toLocaleString()}** coins — Wallet: **${data.wallet.toLocaleString()}**`)
-    ]});
+    const sign = diff >= 0 ? '+' : '';
+    return message.reply({ embeds: [new EmbedBuilder().setColor(multi >= 1 ? C.GREEN : C.RED).setDescription(`🟢 **${multi}x** Multiplier\nPayout: **${win}** coins (${sign}${diff})`)] });
   }
 
   // ----------------------------------------------------------
@@ -471,19 +459,27 @@ async function handleEconomyCommands(message, args, cmd) {
       while (total > 21 && aces-- > 0) total -= 10;
       return total;
     };
-    const showHand = (hand) => hand.map(c => '`' + c.name + '`').join(' ');
+    const showHand = (hand) => hand.map(c => `\`${c.name}\``).join(' ');
 
     let playerHand = [dealCard(), dealCard()];
     let dealerHand = [dealCard(), dealCard()];
 
-    const buildEmbed = (done = false, resultText = null) => {
-      const pVal  = handVal(playerHand);
-      const dVal  = handVal(dealerHand);
-      const color = !done ? C.BLUE : resultText.includes('+') ? C.GREEN : resultText.includes('Tie') ? C.GOLD : C.RED;
-      const dealerShow = done ? showHand(dealerHand) : ('`' + dealerHand[0].name + '` `?`');
+    const buildEmbed = (done, resultText) => {
+      const pVal = handVal(playerHand);
+      const dVal = handVal(dealerHand);
+      let color = C.BLUE;
+      if (done && resultText) {
+        color = resultText.includes('+') ? C.GREEN : resultText.includes('Tie') ? C.GOLD : C.RED;
+      }
+      const dealerShow = done ? showHand(dealerHand) : `\`${dealerHand[0].name}\` \`?\``;
       return new EmbedBuilder()
         .setColor(color)
-        .setDescription(`🃏 **Blackjack**\n\n**Your hand** (${pVal}): ${showHand(playerHand)}\n**Dealer** (${done ? dVal : '?'}): ${dealerShow}\n\n` + (resultText ? `**${resultText}**` : 'React ✅ to **Hit** or 🛑 to **Stand**'))
+        .setDescription(
+          `🃏 **Blackjack**\n\n` +
+          `**Your hand** (${pVal}): ${showHand(playerHand)}\n` +
+          `**Dealer** (${done ? dVal : '?'}): ${dealerShow}\n\n` +
+          (resultText ? `**${resultText}**` : 'React ✅ to **Hit** or 🛑 to **Stand**')
+        )
         .setFooter({ text: `Bet: ${amount.toLocaleString()} coins` });
     };
 
@@ -493,61 +489,65 @@ async function handleEconomyCommands(message, args, cmd) {
       return message.reply({ embeds: [buildEmbed(true, `Blackjack! +${amount.toLocaleString()} coins`)] });
     }
 
-    const msg = await message.reply({ embeds: [buildEmbed()] });
+    const msg = await message.reply({ embeds: [buildEmbed(false, null)] });
     await msg.react('✅');
     await msg.react('🛑');
 
-    let done = false;
+    let finished = false;
+
+    const resolve = async (resultText) => {
+      if (finished) return;
+      finished = true;
+      await msg.edit({ embeds: [buildEmbed(true, resultText)] }).catch(() => {});
+      await msg.reactions.removeAll().catch(() => {});
+    };
+
     const filter = (reaction, u) => ['✅','🛑'].includes(reaction.emoji.name) && u.id === user.id;
     const collector = msg.createReactionCollector({ filter, time: 30_000 });
 
     collector.on('collect', async (reaction) => {
-      if (done) return;
+      if (finished) return;
       reaction.users.remove(user.id).catch(() => {});
 
       if (reaction.emoji.name === '✅') {
         playerHand.push(dealCard());
         if (handVal(playerHand) > 21) {
-          done = true;
-          collector.stop();
           data.wallet -= amount;
           await data.save();
-          await msg.edit({ embeds: [buildEmbed(true, `Bust! -${amount.toLocaleString()} coins`)] });
-          await msg.reactions.removeAll().catch(() => {});
-          return;
+          return resolve(`Bust! -${amount.toLocaleString()} coins`);
         }
-        await msg.edit({ embeds: [buildEmbed()] });
+        await msg.edit({ embeds: [buildEmbed(false, null)] }).catch(() => {});
+        return;
       }
 
       if (reaction.emoji.name === '🛑') {
-        done = true;
-        collector.stop('stand');
+        while (handVal(dealerHand) < 17) dealerHand.push(dealCard());
+        const pVal = handVal(playerHand);
+        const dVal = handVal(dealerHand);
+        let result;
+        if (dVal > 21 || pVal > dVal) { data.wallet += amount; result = `You win! +${amount.toLocaleString()} coins`; }
+        else if (pVal === dVal)         { result = 'Tie! Bet returned.'; }
+        else                            { data.wallet -= amount; result = `Dealer wins. -${amount.toLocaleString()} coins`; }
+        await data.save();
+        return resolve(result);
       }
     });
 
     collector.on('end', async (_, reason) => {
-      if (done && reason !== 'stand') return;
-      done = true;
+      if (finished) return;
       while (handVal(dealerHand) < 17) dealerHand.push(dealCard());
       const pVal = handVal(playerHand);
       const dVal = handVal(dealerHand);
-      let resultText;
-      if (dVal > 21 || pVal > dVal) {
-        data.wallet += amount;
-        resultText = `You win! +${amount.toLocaleString()} coins`;
-      } else if (pVal === dVal) {
-        resultText = 'Tie! Bet returned.';
-      } else {
-        data.wallet -= amount;
-        resultText = `Dealer wins. -${amount.toLocaleString()} coins`;
-      }
+      let result;
+      if (dVal > 21 || pVal > dVal) { data.wallet += amount; result = `You win! +${amount.toLocaleString()} coins`; }
+      else if (pVal === dVal)         { result = 'Tie! Bet returned.'; }
+      else                            { data.wallet -= amount; result = `Dealer wins. -${amount.toLocaleString()} coins`; }
       await data.save();
-      await msg.edit({ embeds: [buildEmbed(true, resultText)] });
-      await msg.reactions.removeAll().catch(() => {});
+      await resolve(result);
     });
+
     return true;
   }
-
   // ----------------------------------------------------------
   // FAME / AURA
   // ----------------------------------------------------------
