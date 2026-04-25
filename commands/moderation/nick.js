@@ -1,25 +1,31 @@
 const { PermissionsBitField, EmbedBuilder } = require("discord.js");
 
-// ,slowmode <seconds>   (0 to disable, max 21600 = 6h)
+const WARN = "<:warning:1497240331756769280>";
+const X    = "<:x_decline:1497240273116336332>";
+const TICK = "<:tick_correct:1497240255085150408>";
 
 module.exports = {
-  name: "slowmode",
+  name: "nick",
+  aliases: ["nickname"],
   async execute(message, args) {
     const err = (msg) => message.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setDescription(msg)] });
 
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
-      return err("<:warning:1497240331756769280> You need **Manage Channels** permission.");
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageNicknames))
+      return err(`${WARN} You need **Manage Nicknames** permission.`);
 
-    const seconds = parseInt(args[0]);
-    if (isNaN(seconds) || seconds < 0 || seconds > 21600)
-      return err("<:warning:1497240331756769280> Usage: `,slowmode <0-21600>`\n`0` disables slowmode. Max is `21600` (6 hours).");
+    const target = message.mentions.members.first();
+    if (!target) return err(`${WARN} Usage: \`,nick @user <new nickname>\` or \`,nick @user\` to reset.`);
 
-    await message.channel.setRateLimitPerUser(seconds);
+    const newNick = args.slice(1).join(" ").trim() || null;
 
-    const text = seconds === 0
-      ? "🔓 Slowmode **disabled** in this channel."
-      : `🐢 Slowmode set to **${seconds}s** in this channel.`;
+    if (!target.manageable) return err(`${X} I can't change this user's nickname (check role hierarchy).`);
 
-    return message.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setDescription(text)] });
+    const old = target.nickname || target.user.username;
+    await target.setNickname(newNick);
+
+    return message.reply({ embeds: [new EmbedBuilder()
+      .setColor(0x57F287)
+      .setDescription(`${TICK} Changed **${target.user.username}**'s nickname.\n**Before:** ${old}\n**After:** ${newNick || target.user.username}`)
+    ]});
   }
 };
