@@ -2,11 +2,13 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags
 const { EcoUser } = require('../../models/schemas');
 
 const C = {
-  MAIN: 0x2b2d31,
-  GREEN: 0x43b581,
-  RED: 0xf04747,
-  GOLD: 0xffac33,
-  WELCOME: 7208536
+  MAIN:    0x2b2d31,
+  GREEN:   0x57F287,
+  RED:     0xED4245,
+  GOLD:    0xFEE75C,
+  BLUE:    0x5865F2,
+  PINK:    0xFFB6C1,
+  WELCOME: 0xFFB6C1
 };
 
 // ============================================================
@@ -270,7 +272,7 @@ async function handleEconomyCommands(message, args, cmd) {
     data.wallet += earn;
     data.lastWork = now;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`🔨 Worked as **${job}** and earned **${earn}** coins.`)] });
+    return message.reply(`<:briefcase:1497206781749887106> Worked as **${job}** and earned <:coin:1497208200183808051> **${earn}** coins.`);
   }
 
   // ----------------------------------------------------------
@@ -286,7 +288,7 @@ async function handleEconomyCommands(message, args, cmd) {
     data.wallet += 500;
     data.lastDaily = now;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription('<:tick_correct:1497240255085150408> Claimed **500** daily coins!')] });
+    return message.reply(`<:gift:1497206819267936377> Claimed your daily <:coin:1497208200183808051> **250** coins! Wallet: **${data.wallet.toLocaleString()}**`);
   }
 
   // ----------------------------------------------------------
@@ -299,10 +301,10 @@ async function handleEconomyCommands(message, args, cmd) {
       embeds: [new EmbedBuilder()
         .setColor(C.MAIN)
         .setAuthor({ name: `${target.username}'s Balance`, iconURL: target.displayAvatarURL() })
-        .setDescription(
-          `<:wallet:1497208281574408313> **Wallet:** ${tData.wallet.toLocaleString()} coins\n` +
-          `<:bank:1497208244740034671> **Bank:** ${tData.bank.toLocaleString()} coins\n` +
-          `<:coin:1497208200183808051> **Total:** ${(tData.wallet + tData.bank).toLocaleString()} coins`
+        .addFields(
+          { name: '<:wallet:1497208281574408313> Wallet', value: `**${tData.wallet.toLocaleString()}** coins`, inline: true },
+          { name: '<:bank:1497208244740034671> Bank',     value: `**${tData.bank.toLocaleString()}** coins`,   inline: true },
+          { name: '<:coin:1497208200183808051> Total',    value: `**${(tData.wallet + tData.bank).toLocaleString()}** coins`, inline: true }
         )]
     });
   }
@@ -312,12 +314,12 @@ async function handleEconomyCommands(message, args, cmd) {
   // ----------------------------------------------------------
   if (cmd === 'dep' || cmd === 'deposit') {
     const amount = args[0] === 'all' ? data.wallet : parseInt(args[0]);
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,dep <amount|all>`');
-    if (amount > data.wallet) return message.reply("<:warning:1497240331756769280> You don't have that many coins in your wallet.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,dep <amount|all>`');
+    if (amount > data.wallet) return message.reply("❌ You don't have that many coins in your wallet.");
     data.wallet -= amount;
     data.bank += amount;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`<:tick_correct:1497240255085150408> Deposited **${amount.toLocaleString()}** coins into your bank.`)] });
+    return message.reply(`<:up_arrow:1497208320103026688> Deposited <:coin:1497208200183808051> **${amount.toLocaleString()}** coins. Bank: **${data.bank.toLocaleString()}**`);
   }
 
   // ----------------------------------------------------------
@@ -325,12 +327,12 @@ async function handleEconomyCommands(message, args, cmd) {
   // ----------------------------------------------------------
   if (cmd === 'with' || cmd === 'withdraw') {
     const amount = args[0] === 'all' ? data.bank : parseInt(args[0]);
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,with <amount|all>`');
-    if (amount > data.bank) return message.reply("<:warning:1497240331756769280> You don't have that many coins in your bank.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,with <amount|all>`');
+    if (amount > data.bank) return message.reply("❌ You don't have that many coins in your bank.");
     data.bank -= amount;
     data.wallet += amount;
     await data.save();
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`<:tick_correct:1497240255085150408> Withdrew **${amount.toLocaleString()}** coins to your wallet.`)] });
+    return message.reply(`<:down_arrow:1497208223206473728> Withdrew <:coin:1497208200183808051> **${amount.toLocaleString()}** coins. Wallet: **${data.wallet.toLocaleString()}**`);
   }
 
   // ----------------------------------------------------------
@@ -339,16 +341,16 @@ async function handleEconomyCommands(message, args, cmd) {
   if (cmd === 'give') {
     const target = message.mentions.users.first();
     const amount = parseInt(args[1]); // args[0] = raw mention, args[1] = number
-    if (!target) return message.reply('<:warning:1497240331756769280> Usage: `,give @user <amount>`');
-    if (target.id === user.id) return message.reply("<:warning:1497240331756769280> You can't give coins to yourself.");
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,give @user <amount>`');
-    if (data.wallet < amount) return message.reply("<:warning:1497240331756769280> Not enough coins in your wallet.");
+    if (!target) return message.reply('❌ Usage: `,give @user <amount>`');
+    if (target.id === user.id) return message.reply("❌ You can't give coins to yourself.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,give @user <amount>`');
+    if (data.wallet < amount) return message.reply("❌ Not enough coins in your wallet.");
     const tData = await getEcoUser(target.id);
     data.wallet -= amount;
     tData.wallet += amount;
     await data.save();
     await tData.save();
-    return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`<:gift:1497206819267936377> Sent **${amount.toLocaleString()}** coins to **${target.username}**.`)] });
+    return message.reply(`<:gift:1497206819267936377> Sent <:coin:1497208200183808051> **${amount.toLocaleString()}** coins to **${target.username}**. Your wallet: **${data.wallet.toLocaleString()}**`);
   }
 
   // ----------------------------------------------------------
@@ -356,10 +358,10 @@ async function handleEconomyCommands(message, args, cmd) {
   // ----------------------------------------------------------
   if (cmd === 'rob') {
     const target = message.mentions.users.first();
-    if (!target || target.id === user.id) return message.reply('<:warning:1497240331756769280> Mention a valid user to rob.');
-    if (target.bot) return message.reply("<:warning:1497240331756769280> You can't rob a bot.");
+    if (!target || target.id === user.id) return message.reply('❌ Mention a valid user to rob.');
+    if (target.bot) return message.reply("❌ You can't rob a bot.");
     const tData = await getEcoUser(target.id);
-    if (tData.wallet < 50) return message.reply("<:warning:1497240331756769280> They're too poor to rob (under 50 coins).");
+    if (tData.wallet < 50) return message.reply("❌ They're too poor to rob (under 50 coins).");
 
     if (Math.random() < 0.4) {
       const stolen = Math.max(1, Math.floor(Math.random() * (tData.wallet / 2)));
@@ -367,12 +369,12 @@ async function handleEconomyCommands(message, args, cmd) {
       data.wallet += stolen;
       await tData.save();
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`😈 You robbed **${stolen}** coins from **${target.username}**!`)] });
+      return message.reply(`<:sword:1497206737231417476> Robbed <:coin:1497208200183808051> **${stolen.toLocaleString()}** coins from **${target.username}**!`);
     } else {
       const fine = Math.min(200, data.wallet);
       data.wallet = Math.max(0, data.wallet - 200);
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`👮 Caught! You paid a **${fine}** coin fine.`)] });
+      return message.reply(`<:x_decline:1497240273116336332> Caught! You paid a <:coin:1497208200183808051> **${fine.toLocaleString()}** coin fine.`);
     }
   }
 
@@ -381,8 +383,8 @@ async function handleEconomyCommands(message, args, cmd) {
   // ----------------------------------------------------------
   if (cmd === 'gamble') {
     const amount = parseInt(args[0]);
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,gamble <amount>`');
-    if (amount > data.wallet) return message.reply("<:warning:1497240331756769280> Not enough coins in your wallet.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,gamble <amount>`');
+    if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
     // Silent bet cap
 
@@ -403,19 +405,25 @@ async function handleEconomyCommands(message, args, cmd) {
   // ----------------------------------------------------------
   if (cmd === 'mines') {
     const amount = parseInt(args[0]);
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,mines <amount>`');
-    if (amount > data.wallet) return message.reply("<:warning:1497240331756769280> Not enough coins in your wallet.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,mines <amount>`');
+    if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
     if (Math.random() > 0.4) {
       const profit = Math.floor(amount * 0.5);
       data.wallet += profit;
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.GREEN).setDescription(`<:diamond:1497206702360236092>  **Safe!** Kept your **${amount}** coins and earned **${profit}** extra!`)] });
+      return message.reply({ embeds: [new EmbedBuilder()
+        .setColor(C.GREEN)
+        .setDescription(`<:diamond:1497206702360236092> **Safe!** +<:coin:1497208200183808051> **${profit.toLocaleString()}** coins · Wallet: **${data.wallet.toLocaleString()}**`)
+      ]});
     } else {
       data.wallet -= amount;
       await data.save();
-      return message.reply({ embeds: [new EmbedBuilder().setColor(C.RED).setDescription(`💥 **BOOM!** You lost **${amount}** coins.`)] });
+      return message.reply({ embeds: [new EmbedBuilder()
+        .setColor(C.RED)
+        .setDescription(`<:mine:1497208162888056935> **BOOM!** -<:coin:1497208200183808051> **${amount.toLocaleString()}** coins · Wallet: **${data.wallet.toLocaleString()}**`)
+      ]});
     }
   }
 
@@ -424,28 +432,38 @@ async function handleEconomyCommands(message, args, cmd) {
   // ----------------------------------------------------------
   if (cmd === 'plinko') {
     const amount = parseInt(args[0]);
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,plinko <amount>`');
-    if (amount > data.wallet) return message.reply("<:warning:1497240331756769280> Not enough coins in your wallet.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('❌ Usage: `,plinko <amount>`');
+    if (amount > data.wallet) return message.reply("❌ Not enough coins in your wallet.");
 
 
-    const multis = [0, 0.5, 1.5, 2.5, 3.0];
-    const multi = multis[Math.floor(Math.random() * multis.length)];
-    const win = Math.floor(amount * multi);
+    // 0x(25%) 0.5x(35%) 0.75x(25%) 1x(15%)
+    const roll = Math.random();
+    let multi;
+    if      (roll < 0.25) multi = 0;
+    else if (roll < 0.60) multi = 0.5;
+    else if (roll < 0.85) multi = 0.75;
+    else                  multi = 1.0;
+
+    const win  = Math.floor(amount * multi);
     const diff = win - amount;
     data.wallet = data.wallet - amount + win;
     await data.save();
 
-    const sign = diff >= 0 ? '+' : '';
-    return message.reply({ embeds: [new EmbedBuilder().setColor(multi >= 1 ? C.GREEN : C.RED).setDescription(`🟢 **${multi}x** Multiplier\nPayout: **${win}** coins (${sign}${diff})`)] });
+    const color = multi === 0 ? C.RED : multi === 1.0 ? C.GREEN : C.GOLD;
+    const label = multi === 0 ? 'Lost everything!' : multi === 1.0 ? 'Break even!' : `${multi}x`;
+    return message.reply({ embeds: [new EmbedBuilder()
+      .setColor(color)
+      .setDescription(`<:target:1497208183951986688> **${label}** — ${diff >= 0 ? '+' : ''}${diff.toLocaleString()} <:coin:1497208200183808051> coins · Wallet: **${data.wallet.toLocaleString()}**`)
+    ]});
   }
 
   // ----------------------------------------------------------
-  // BLACKJACK — react ✅ to Hit, 🛑 to Stand
+  // BLACKJACK — react <:cards_bj:1497208087969529977> Hit, 🛑 Stand
   // ----------------------------------------------------------
   if (cmd === 'bj' || cmd === 'blackjack') {
     const amount = parseInt(args[0]);
-    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:warning:1497240331756769280> Usage: `,bj <amount>`');
-    if (amount > data.wallet) return message.reply("<:warning:1497240331756769280> Not enough coins in your wallet.");
+    if (!amount || isNaN(amount) || amount <= 0) return message.reply('<:x_decline:1497240273116336332> Usage: `,bj <amount>`');
+    if (amount > data.wallet) return message.reply('<:x_decline:1497240273116336332> Not enough coins in your wallet.');
 
     const dealCard = () => {
       const names = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
@@ -459,7 +477,7 @@ async function handleEconomyCommands(message, args, cmd) {
       while (total > 21 && aces-- > 0) total -= 10;
       return total;
     };
-    const showHand = (hand) => hand.map(c => `\`${c.name}\``).join(' ');
+    const showHand = (hand) => hand.map(c => '`' + c.name + '`').join(' ');
 
     let playerHand = [dealCard(), dealCard()];
     let dealerHand = [dealCard(), dealCard()];
@@ -471,11 +489,11 @@ async function handleEconomyCommands(message, args, cmd) {
       if (done && resultText) {
         color = resultText.includes('+') ? C.GREEN : resultText.includes('Tie') ? C.GOLD : C.RED;
       }
-      const dealerShow = done ? showHand(dealerHand) : `\`${dealerHand[0].name}\` \`?\``;
+      const dealerShow = done ? showHand(dealerHand) : ('`' + dealerHand[0].name + '` `?`');
       return new EmbedBuilder()
         .setColor(color)
         .setDescription(
-          `<:cards_bj:1497208087969529977>  **Blackjack**\n\n` +
+          `<:cards_bj:1497208087969529977> **Blackjack**\n\n` +
           `**Your hand** (${pVal}): ${showHand(playerHand)}\n` +
           `**Dealer** (${done ? dVal : '?'}): ${dealerShow}\n\n` +
           (resultText ? `**${resultText}**` : 'React ✅ to **Hit** or 🛑 to **Stand**')
@@ -533,7 +551,7 @@ async function handleEconomyCommands(message, args, cmd) {
       }
     });
 
-    collector.on('end', async (_, reason) => {
+    collector.on('end', async () => {
       if (finished) return;
       while (handVal(dealerHand) < 17) dealerHand.push(dealCard());
       const pVal = handVal(playerHand);
@@ -545,7 +563,6 @@ async function handleEconomyCommands(message, args, cmd) {
       await data.save();
       await resolve(result);
     });
-
     return true;
   }
   // ----------------------------------------------------------
@@ -570,12 +587,12 @@ async function handleEconomyCommands(message, args, cmd) {
 
     col.on('collect', async i => {
       if (i.user.id === target.id) {
-        return i.reply({ content: "<:x_decline:1497240273116336332>  You can't vote on yourself.", flags: MessageFlags.Ephemeral });
+        return i.reply({ content: "❌ You can't vote on yourself.", flags: MessageFlags.Ephemeral });
       }
       const tUser = await getEcoUser(target.id);
       if (i.customId.startsWith('bst')) {
         tUser.aura += 1;
-        await i.reply({ content: `<:tick_correct:1497240255085150408> Boosted **${target.username}**'s aura!`, flags: MessageFlags.Ephemeral });
+        await i.reply({ content: `✅ Boosted **${target.username}**'s aura!`, flags: MessageFlags.Ephemeral });
       } else {
         tUser.aura -= 1;
         await i.reply({ content: `📉 Negged **${target.username}**'s aura.`, flags: MessageFlags.Ephemeral });
